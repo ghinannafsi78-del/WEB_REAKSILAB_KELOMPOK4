@@ -1,0 +1,308 @@
+/**
+ * ProgressPage.css
+ * Styling untuk Halaman Progres Belajar Siswa
+ */
+
+.progress-page-container {
+  width: 100%;
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 2rem 1.5rem 5rem;
+}
+
+.progress-page-header {
+  margin-bottom: 2.25rem;
+}
+
+.progress-main-title {
+  font-size: clamp(1.8rem, 3.2vw, 2.4rem);
+  font-weight: 800;
+  margin-bottom: 0.5rem;
+  color: var(--color-text-primary);
+}
+
+.progress-main-subtitle {
+  font-size: 1rem;
+  color: var(--color-text-secondary);
+}
+
+/* Hero Banner */
+.progress-hero-banner {
+  background: var(--color-bg-card);
+  border: 1px solid var(--color-border-subtle);
+  border-radius: var(--radius-xl);
+  padding: 2.25rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 2rem;
+  margin-bottom: 2.5rem;
+  backdrop-filter: var(--backdrop-blur);
+}
+
+.banner-tag {
+  display: inline-block;
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--lab-cyan);
+  margin-bottom: 0.45rem;
+}
+
+.banner-title {
+  font-size: 1.5rem;
+  font-weight: 800;
+  margin-bottom: 0.45rem;
+}
+
+.banner-desc {
+  font-size: 0.95rem;
+  color: var(--color-text-secondary);
+  margin-bottom: 1.5rem;
+  max-width: 600px;
+}
+
+.overall-bar-wrapper {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.overall-bar-track {
+  width: 320px;
+  max-width: 100%;
+  height: 10px;
+  background: var(--color-bg-surface);
+  border-radius: var(--radius-full);
+  overflow: hidden;
+  border: 1px solid var(--color-border-subtle);
+}
+
+.overall-bar-fill {
+  height: 100%;
+  background: var(--grad-cyan-blue);
+  border-radius: var(--radius-full);
+  transition: width 0.4s ease;
+}
+
+.overall-bar-text {
+  font-family: var(--font-mono);
+  font-size: 0.88rem;
+  font-weight: 700;
+  color: var(--lab-cyan);
+}
+
+.btn-reset {
+  font-size: 0.85rem;
+  color: var(--color-text-muted);
+}
+
+/* Breakdown Grid */
+.progress-breakdown-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 2rem;
+  margin-bottom: 2.5rem;
+}
+
+.breakdown-card {
+  background: var(--color-bg-card);
+  border: 1px solid var(--color-border-subtle);
+  border-radius: var(--radius-xl);
+  padding: 1.85rem;
+  backdrop-filter: var(--backdrop-blur);
+}
+
+.card-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 1.25rem;
+  padding-bottom: 0.85rem;
+  border-bottom: 1px solid var(--color-border-subtle);
+}
+
+.card-top h3 {
+  font-size: 1.1rem;
+  font-weight: 700;
+}
+
+.card-badge {
+  font-size: 0.75rem;
+  font-weight: 600;
+  padding: 0.2rem 0.55rem;
+  border-radius: var(--radius-sm);
+  background: var(--color-bg-surface);
+  border: 1px solid var(--color-border-subtle);
+  color: var(--color-text-secondary);
+}
+
+.items-checklist {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.checklist-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.85rem 1rem;
+  border-radius: var(--radius-md);
+  background: var(--color-bg-subtle);
+  border: 1px solid var(--color-border-subtle);
+}
+
+.checklist-item.done {
+  border-color: rgba(16, 185, 129, 0.35);
+  background: rgba(16, 185, 129, 0.05);
+}
+
+.check-toggle-btn {
+  display: flex;
+  align-items: center;
+  gap: 0.85rem;
+  text-align: left;
+  cursor: pointer;
+  background: transparent;
+  flex-grow: 1;
+}
+
+.checkbox-indicator {
+  width: 24px;
+  height: 24px;
+  border-radius: var(--radius-sm);
+  border: 2px solid var(--color-border-subtle);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.85rem;
+  font-weight: bold;
+  color: #fff;
+  flex-shrink: 0;
+  background: var(--color-bg-surface);
+  transition: all var(--transition-fast);
+}
+
+.checklist-item.done .checkbox-indicator {
+  background: var(--lab-emerald);
+  border-color: var(--lab-emerald);
+}
+
+.check-text-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+}
+
+.check-text-group strong {
+  font-size: 0.92rem;
+  color: var(--color-text-primary);
+}
+
+.check-text-group span {
+  font-size: 0.78rem;
+  color: var(--color-text-muted);
+}
+
+.btn-read-mod {
+  font-size: 0.78rem;
+  font-weight: 700;
+  padding: 0.35rem 0.65rem;
+  border-radius: var(--radius-sm);
+  background: var(--color-bg-surface);
+  border: 1px solid var(--color-border-subtle);
+  color: var(--color-text-secondary);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.btn-read-mod:hover {
+  color: var(--lab-cyan);
+  border-color: var(--lab-cyan);
+}
+
+/* History Card */
+.quiz-history-card {
+  background: var(--color-bg-card);
+  border: 1px solid var(--color-border-subtle);
+  border-radius: var(--radius-xl);
+  padding: 2rem;
+  backdrop-filter: var(--backdrop-blur);
+}
+
+.quiz-history-card h3 {
+  font-size: 1.15rem;
+  font-weight: 700;
+  margin-bottom: 1.25rem;
+}
+
+.empty-history-box {
+  text-align: center;
+  padding: 2.5rem 1rem;
+  color: var(--color-text-secondary);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1.25rem;
+}
+
+.table-responsive {
+  overflow-x: auto;
+}
+
+.history-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.92rem;
+}
+
+.history-table th {
+  text-align: left;
+  padding: 0.85rem 1rem;
+  font-size: 0.78rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--color-text-muted);
+  border-bottom: 1px solid var(--color-border-subtle);
+}
+
+.history-table td {
+  padding: 0.95rem 1rem;
+  border-bottom: 1px solid var(--color-border-subtle);
+  color: var(--color-text-secondary);
+}
+
+.score-pill {
+  display: inline-block;
+  font-family: var(--font-mono);
+  font-size: 0.82rem;
+  font-weight: 700;
+  padding: 0.2rem 0.55rem;
+  border-radius: var(--radius-sm);
+}
+
+.score-pill.pass {
+  background: var(--lab-emerald-subtle);
+  color: var(--lab-emerald);
+  border: 1px solid rgba(16, 185, 129, 0.3);
+}
+
+.score-pill.retry {
+  background: var(--lab-amber-subtle);
+  color: var(--lab-amber);
+  border: 1px solid rgba(245, 158, 11, 0.3);
+}
+
+@media (max-width: 850px) {
+  .progress-hero-banner {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .progress-breakdown-grid {
+    grid-template-columns: 1fr;
+  }
+}

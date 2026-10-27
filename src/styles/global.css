@@ -1,0 +1,190 @@
+/**
+ * styles/global.css
+ * Global stylesheets, resets, utilities & accessibility
+ */
+
+@import './variables.css';
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html, body {
+  min-height: 100vh;
+  background-color: var(--color-bg-base);
+  color: var(--color-text-primary);
+  font-family: var(--font-body);
+  font-size: 16px;
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  overflow-x: hidden;
+  transition: background-color var(--transition-normal), color var(--transition-normal);
+}
+
+/* Background atmospheric science grid & ambient light */
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background-image: 
+    radial-gradient(circle at 50% -10%, var(--lab-cyan-glow) 0%, transparent 60%),
+    linear-gradient(to right, rgba(255, 255, 255, 0.02) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(255, 255, 255, 0.02) 1px, transparent 1px);
+  background-size: 100% 100%, 48px 48px, 48px 48px;
+  pointer-events: none;
+  z-index: -1;
+}
+
+h1, h2, h3, h4, h5, h6 {
+  font-family: var(--font-heading);
+  color: var(--color-text-primary);
+  letter-spacing: -0.02em;
+  line-height: 1.25;
+}
+
+p {
+  color: var(--color-text-secondary);
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+button {
+  font-family: inherit;
+  cursor: pointer;
+  border: none;
+  outline: none;
+  background: transparent;
+}
+
+/* Accessible focus styling */
+:focus-visible {
+  outline: 2px solid var(--lab-cyan);
+  outline-offset: 3px;
+  border-radius: var(--radius-sm);
+}
+
+/* Reduced motion preference */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* Container */
+.container {
+  width: 100%;
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 1.5rem;
+}
+
+/* Badges */
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.78rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  padding: 0.28rem 0.75rem;
+  border-radius: var(--radius-full);
+}
+
+.badge-cyan {
+  background: var(--lab-cyan-subtle);
+  border: 1px solid rgba(0, 210, 211, 0.3);
+  color: var(--lab-cyan);
+}
+
+.badge-emerald {
+  background: var(--lab-emerald-subtle);
+  border: 1px solid rgba(16, 185, 129, 0.3);
+  color: var(--lab-emerald);
+}
+
+.badge-amber {
+  background: var(--lab-amber-subtle);
+  border: 1px solid rgba(245, 158, 11, 0.3);
+  color: var(--lab-amber);
+}
+
+/* Section titles */
+.section-header {
+  text-align: center;
+  max-width: 700px;
+  margin: 0 auto 3rem;
+}
+
+.section-eyebrow {
+  display: inline-block;
+  font-size: 0.8rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--lab-cyan);
+  margin-bottom: 0.65rem;
+}
+
+.section-title {
+  font-size: clamp(1.8rem, 3.2vw, 2.5rem);
+  font-weight: 700;
+  margin-bottom: 0.85rem;
+  color: var(--color-text-primary);
+}
+
+.section-desc {
+  font-size: 1.05rem;
+  color: var(--color-text-secondary);
+  line-height: 1.6;
+}
+
+/* Buttons */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.6rem;
+  padding: 0.75rem 1.45rem;
+  font-size: 0.95rem;
+  font-weight: 600;
+  border-radius: var(--radius-md);
+  transition: all var(--transition-normal);
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.btn-primary {
+  background: var(--grad-cyan-blue);
+  color: #03141f;
+  box-shadow: 0 4px 14px rgba(0, 210, 211, 0.28);
+}
+
+.btn-primary:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 24px rgba(0, 210, 211, 0.42);
+}
+
+.btn-secondary {
+  background: var(--color-bg-card);
+  border: 1px solid var(--color-border-subtle);
+  color: var(--color-text-primary);
+  backdrop-filter: var(--backdrop-blur);
+}
+
+.btn-secondary:hover {
+  background: var(--color-bg-card-hover);
+  border-color: var(--color-border-active);
+  transform: translateY(-2px);
+}
