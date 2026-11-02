@@ -1,723 +1,352 @@
-
-# PRD.md — REAKSI LAB
-
-## 1. Informasi Produk
-
-**Nama Produk:** REAKSI LAB  
-**Jenis Produk:** Aplikasi pembelajaran kimia berbasis web  
-**Mata Pelajaran:** Kimia  
-**Materi Utama:** Laju Reaksi  
-**Target Pengguna:** Siswa SMA/MA kelas XI  
-**Platform:** Web  
-**Bahasa:** Indonesia  
-**Teknologi:** React, Vite, JavaScript, CSS  
-**Penyimpanan Progres:** LocalStorage  
-
----
-
-## 2. Latar Belakang
-
-Materi laju reaksi mencakup konsep abstrak dan perhitungan matematis, seperti teori tumbukan, faktor-faktor yang memengaruhi laju reaksi, energi aktivasi, serta persamaan laju reaksi. Siswa sering mengalami kesulitan menghubungkan teori dengan fenomena nyata.
-
-REAKSI LAB dikembangkan sebagai media pembelajaran interaktif yang menggabungkan materi terstruktur, visualisasi konsep, simulasi praktikum virtual, latihan soal, dan pemantauan progres belajar.
-
-Aplikasi harus membantu siswa memahami konsep melalui eksplorasi, bukan hanya membaca materi dan menghafal rumus.
-
----
-
-## 3. Tujuan Produk
-
-1. Membantu siswa memahami konsep laju reaksi secara bertahap.
-2. Menjelaskan pengaruh konsentrasi, suhu, luas permukaan, dan katalis terhadap laju reaksi.
-3. Menyediakan simulasi praktikum virtual yang dapat dimanipulasi oleh siswa.
-4. Menghubungkan fenomena makroskopik, representasi mikroskopik, dan persamaan simbolik.
-5. Memberikan latihan soal dengan umpan balik dan pembahasan.
-6. Menyimpan progres belajar siswa secara lokal pada perangkat.
-7. Menyediakan pengalaman belajar yang responsif, menarik, dan mudah digunakan.
-
----
-
-## 4. Target Pengguna
-
-### Pengguna Utama
-Siswa SMA/MA kelas XI yang sedang mempelajari materi laju reaksi.
-
-### Karakteristik Pengguna
-- Memerlukan penjelasan konsep secara sederhana dan sistematis.
-- Membutuhkan visualisasi untuk memahami proses tumbukan partikel.
-- Memerlukan latihan soal dengan pembahasan.
-- Membutuhkan pengalaman praktikum tanpa harus selalu menggunakan laboratorium fisik.
-- Mengakses aplikasi melalui laptop, tablet, atau ponsel.
-
-### Kebutuhan Pengguna
-- Mengetahui materi yang harus dipelajari.
-- Membaca penjelasan dan contoh soal.
-- Melakukan eksperimen virtual.
-- Mengamati perubahan hasil simulasi ketika variabel diubah.
-- Mengerjakan kuis.
-- Mengetahui materi dan eksperimen yang sudah diselesaikan.
-
----
-
-## 5. Ruang Lingkup Produk
-
-### Fitur Wajib
-
-1. Dashboard pembelajaran.
-2. Modul materi laju reaksi.
-3. Contoh soal dan pembahasan.
-4. Laboratorium virtual interaktif.
-5. Visualisasi partikel dan tumbukan.
-6. Simulasi pengaruh faktor-faktor laju reaksi.
-7. Kuis interaktif.
-8. Hasil kuis dan pembahasan jawaban.
-9. Penyimpanan progres belajar menggunakan LocalStorage.
-10. Navigasi yang responsif dan konsisten.
-
-### Fitur Tambahan
-- Grafik perubahan konsentrasi terhadap waktu.
-- Ringkasan hasil eksperimen.
-- Indikator penyelesaian materi.
-- Rekomendasi materi yang belum diselesaikan.
-- Tombol untuk mengulang eksperimen dan mengatur ulang progres.
-
-### Di Luar Ruang Lingkup Versi Pertama
-- Login dan registrasi akun.
-- Database atau backend.
-- Sinkronisasi progres antarperangkat.
-- Kelas daring dengan banyak pengguna.
-- Penilaian otomatis berbasis AI.
-- Klaim bahwa simulasi merupakan pengganti sepenuhnya bagi eksperimen laboratorium nyata.
-
----
-
-## 6. Struktur Navigasi
-
-Aplikasi memiliki navigasi utama berikut:
-
-1. **Beranda**
-   - Pengenalan REAKSI LAB.
-   - Ringkasan progres belajar.
-   - Tombol mulai belajar.
-   - Akses cepat ke materi, laboratorium, dan kuis.
-
-2. **Materi**
-   - Daftar modul.
-   - Status penyelesaian modul.
-   - Halaman detail materi.
-   - Contoh soal dan pembahasan.
-   - Ringkasan materi.
-
-3. **Laboratorium Virtual**
-   - Daftar eksperimen.
-   - Panel pengaturan variabel.
-   - Visualisasi reaksi.
-   - Hasil pengamatan.
-   - Grafik dan kesimpulan.
-
-4. **Kuis**
-   - Pemilihan kategori soal.
-   - Pertanyaan pilihan ganda.
-   - Umpan balik jawaban.
-   - Pembahasan.
-   - Skor akhir.
-
-5. **Progres Belajar**
-   - Materi yang telah diselesaikan.
-   - Eksperimen yang telah dijalankan atau diselesaikan.
-   - Riwayat percobaan kuis.
-   - Persentase progres keseluruhan.
-
----
-
-## 7. Spesifikasi Modul Materi
-
-Materi disusun secara bertahap dari konsep dasar hingga penerapan.
-
-### Modul 1 — Konsep Dasar Laju Reaksi
-- Pengertian laju reaksi.
-- Perubahan konsentrasi terhadap waktu.
-- Laju reaksi rata-rata dan sesaat.
-- Teori tumbukan.
-- Tumbukan efektif.
-- Energi aktivasi.
-- Contoh penerapan dalam kehidupan sehari-hari.
-
-### Modul 2 — Faktor-Faktor yang Memengaruhi Laju Reaksi
-- Konsentrasi pereaksi.
-- Suhu.
-- Luas permukaan.
-- Katalis.
-- Hubungan setiap faktor dengan frekuensi dan efektivitas tumbukan.
-- Contoh fenomena nyata.
-- Perbandingan hasil percobaan.
-
-### Modul 3 — Persamaan dan Perhitungan Laju Reaksi
-- Persamaan laju reaksi.
-- Orde reaksi.
-- Tetapan laju reaksi.
-- Penentuan orde reaksi dari data eksperimen.
-- Pengaruh suhu terhadap laju reaksi.
-- Energi aktivasi dan persamaan Arrhenius sebagai materi pendukung sesuai kebutuhan kurikulum.
-- Contoh soal beserta langkah penyelesaian.
-
-### Format Setiap Modul
-Setiap modul harus memiliki:
-- Judul.
-- Deskripsi singkat.
-- Tujuan pembelajaran.
-- Materi inti.
-- Penjelasan konsep.
-- Visualisasi atau ilustrasi.
-- Contoh soal.
-- Pembahasan.
-- Ringkasan.
-- Kuis atau aktivitas terkait.
-- Status penyelesaian.
-
-Materi harus menggunakan bahasa Indonesia yang jelas, akurat, dan sesuai tingkat pemahaman siswa SMA/MA.
-
----
-
-## 8. Spesifikasi Laboratorium Virtual
-
-Laboratorium virtual merupakan fitur utama REAKSI LAB.
-
-Siswa dapat mengubah variabel eksperimen dan mengamati perubahan laju reaksi melalui visualisasi serta data simulasi.
-
-### Eksperimen A — Pengaruh Konsentrasi
-Variabel yang dapat diubah:
-- Konsentrasi pereaksi.
-
-Variabel yang dikendalikan:
-- Suhu.
-- Luas permukaan.
-- Keberadaan katalis.
-- Kondisi awal lainnya.
-
-Hasil yang ditampilkan:
-- Visualisasi jumlah partikel.
-- Frekuensi tumbukan secara kualitatif.
-- Perubahan konsentrasi terhadap waktu.
-- Grafik hasil simulasi.
-- Penjelasan hubungan konsentrasi dengan laju reaksi.
-
-### Eksperimen B — Pengaruh Suhu
-Variabel yang dapat diubah:
-- Suhu reaksi.
-
-Variabel yang dikendalikan:
-- Konsentrasi.
-- Luas permukaan.
-- Keberadaan katalis.
-- Kondisi awal lainnya.
-
-Hasil yang ditampilkan:
-- Visualisasi gerakan partikel.
-- Perbandingan energi kinetik secara kualitatif.
-- Perubahan frekuensi tumbukan.
-- Perubahan jumlah tumbukan efektif secara kualitatif.
-- Grafik dan kesimpulan.
-
-### Eksperimen C — Pengaruh Luas Permukaan
-Variabel yang dapat diubah:
-- Ukuran partikel atau tingkat pembagian zat padat.
-
-Variabel yang dikendalikan:
-- Konsentrasi zat lain.
-- Suhu.
-- Keberadaan katalis.
-- Kondisi awal lainnya.
-
-Hasil yang ditampilkan:
-- Perbandingan partikel padatan berukuran besar dan kecil.
-- Visualisasi area kontak.
-- Penjelasan pengaruh luas permukaan terhadap laju reaksi.
-
-### Eksperimen D — Pengaruh Katalis
-Variabel yang dapat diubah:
-- Kondisi tanpa katalis dan dengan katalis.
-
-Variabel yang dikendalikan:
-- Konsentrasi.
-- Suhu.
-- Luas permukaan.
-- Kondisi awal lainnya.
-
-Hasil yang ditampilkan:
-- Perbandingan jalur reaksi.
-- Diagram energi dengan dan tanpa katalis.
-- Perbandingan energi aktivasi.
-- Penjelasan bahwa katalis menyediakan jalur reaksi alternatif dengan energi aktivasi lebih rendah.
-
-### Interaksi Laboratorium
-Setiap eksperimen harus menyediakan:
-- Pengaturan variabel yang mudah digunakan.
-- Tombol mulai simulasi.
-- Tombol jeda jika diperlukan.
-- Tombol ulangi eksperimen.
-- Tombol reset parameter.
-- Tampilan hasil pengamatan.
-- Kesimpulan berdasarkan hasil simulasi.
-
-### Ketentuan Ilmiah
-- Simulasi harus konsisten dengan konsep kimia yang benar.
-- Pengaruh variabel harus dapat dibandingkan secara adil.
-- Variabel lain harus dikendalikan ketika satu faktor sedang diuji.
-- Model matematis harus diberi keterangan sebagai model sederhana jika tidak mewakili mekanisme reaksi nyata secara lengkap.
-- Data simulasi tidak boleh ditampilkan sebagai hasil eksperimen laboratorium nyata.
-- Grafik harus memiliki label sumbu, satuan jika relevan, dan legenda yang jelas.
-
----
-
-## 9. Spesifikasi Visualisasi
-
-Visualisasi harus membantu siswa menghubungkan tiga representasi kimia.
-
-### Representasi Makroskopik
-Menampilkan fenomena yang dapat diamati, seperti perubahan warna, terbentuknya gas, atau perubahan jumlah zat dalam model simulasi jika sesuai dengan sistem reaksi yang dipilih.
-
-### Representasi Mikroskopik
-Menampilkan partikel yang bergerak dan mengalami tumbukan.
-
-Visualisasi harus:
-- Menunjukkan perbedaan gerak partikel ketika suhu berubah.
-- Menunjukkan perbedaan jumlah partikel ketika konsentrasi berubah.
-- Menunjukkan perbedaan luas kontak ketika ukuran padatan berubah.
-- Menjelaskan efek katalis melalui jalur energi, bukan dengan menggambarkan katalis sebagai pereaksi yang habis.
-
-### Representasi Simbolik
-Menampilkan persamaan reaksi, rumus laju reaksi, variabel, dan grafik yang relevan.
-
-Ketiga representasi harus saling terhubung melalui penjelasan singkat.
-
----
-
-## 10. Spesifikasi Kuis
-
-Kuis digunakan untuk mengukur pemahaman siswa terhadap materi.
-
-### Ketentuan
-- Pertanyaan pilihan ganda.
-- Setiap pertanyaan memiliki satu jawaban benar.
-- Setiap opsi jawaban harus jelas dan tidak ambigu.
-- Setiap soal memiliki pembahasan.
-- Jawaban yang dipilih harus mendapat umpan balik.
-- Skor akhir dihitung berdasarkan jawaban benar.
-- Siswa dapat mengulang kuis.
-
-### Kategori Kuis
-1. Konsep dasar laju reaksi.
-2. Teori tumbukan dan energi aktivasi.
-3. Faktor-faktor yang memengaruhi laju reaksi.
-4. Persamaan dan perhitungan laju reaksi.
-5. Interpretasi data dan grafik eksperimen.
-
-### Format Data Pertanyaan
-Setiap pertanyaan sekurang-kurangnya memiliki:
-- ID pertanyaan.
-- Kategori.
-- Teks pertanyaan.
-- Pilihan jawaban.
-- Indeks atau ID jawaban benar.
-- Penjelasan jawaban.
-- Tingkat kesulitan.
-
-### Perhitungan Skor
-Skor persentase dihitung menggunakan:
-
-Skor = (Jumlah jawaban benar / Jumlah seluruh soal) × 100
-
-Hasil harus ditampilkan sebagai skor dari 0 hingga 100.
-
----
-
-## 11. Model Data
-
-Gunakan struktur data JavaScript yang konsisten agar materi, eksperimen, kuis, dan progres dapat dikelola secara terpisah.
-
-### Modul
-Setiap objek modul memiliki:
-- `id`
-- `title`
-- `description`
-- `order`
-- `objectives`
-- `sections`
-- `workedExamples`
-- `summary`
-- `relatedExperimentIds`
-- `quizCategoryIds`
-
-### Eksperimen
-Setiap objek eksperimen memiliki:
-- `id`
-- `title`
-- `description`
-- `factor`
-- `variables`
-- `defaultParameters`
-- `parameterRanges`
-- `controls`
-- `learningObjectives`
-
-### Pertanyaan Kuis
-Setiap objek pertanyaan memiliki:
-- `id`
-- `category`
-- `question`
-- `options`
-- `correctAnswer`
-- `explanation`
-- `difficulty`
-
-### Progres Siswa
-Data progres memiliki:
-- `completedModules`
-- `completedExperiments`
-- `quizAttempts`
-- `lastUpdated`
-
-### Riwayat Kuis
-Setiap percobaan kuis memiliki:
-- `id`
-- `category`
-- `score`
-- `totalQuestions`
-- `correctAnswers`
-- `completedAt`
-
-Gunakan ID yang unik dan stabil. Hindari menggunakan judul sebagai satu-satunya identitas data.
-
----
-
-## 12. Struktur Folder yang Direkomendasikan
-
-```text
-src/
-├── assets/
-│   ├── images/
-│   └── icons/
-├── components/
-│   ├── layout/
-│   │   ├── Header.jsx
-│   │   ├── Sidebar.jsx
-│   │   └── MainLayout.jsx
-│   ├── common/
-│   │   ├── Button.jsx
-│   │   ├── Card.jsx
-│   │   ├── ProgressBar.jsx
-│   │   └── Modal.jsx
-│   ├── learning/
-│   │   ├── ModuleCard.jsx
-│   │   ├── LessonContent.jsx
-│   │   └── WorkedExample.jsx
-│   ├── laboratory/
-│   │   ├── ExperimentCard.jsx
-│   │   ├── ParameterControls.jsx
-│   │   ├── ParticleSimulation.jsx
-│   │   └── ExperimentResults.jsx
-│   └── quiz/
-│       ├── QuizQuestion.jsx
-│       ├── QuizFeedback.jsx
-│       └── QuizResult.jsx
-├── pages/
-│   ├── HomePage.jsx
-│   ├── ModulesPage.jsx
-│   ├── ModuleDetailPage.jsx
-│   ├── LaboratoryPage.jsx
-│   ├── ExperimentPage.jsx
-│   ├── QuizPage.jsx
-│   └── ProgressPage.jsx
-├── data/
-│   ├── modules.js
-│   ├── experiments.js
-│   ├── quizQuestions.js
-│   └── index.js
-├── services/
-│   ├── simulationService.js
-│   └── progressService.js
-├── hooks/
-│   └── useProgress.js
-├── utils/
-│   ├── calculations.js
-│   └── formatters.js
-├── styles/
-│   ├── global.css
-│   └── variables.css
-├── App.jsx
-└── main.jsx
-```
-
-Struktur tersebut merupakan panduan. Jika proyek sudah memiliki struktur folder yang berbeda, pertahankan struktur yang berfungsi dan sesuaikan secara konsisten.
-
----
-
-## 13. Teknologi dan Arsitektur
-
-### Frontend
-- React untuk antarmuka dan komponen.
-- Vite untuk pengembangan dan build.
-- JavaScript ES Modules.
-- CSS responsif.
-- React Router jika diperlukan untuk navigasi ant halaman.
-
-### Pengelolaan Data
-- Data materi, eksperimen, dan soal disimpan dalam modul JavaScript.
-- Logika simulasi ditempatkan pada `simulationService.js`.
-- Logika penyimpanan progres ditempatkan pada `progressService.js`.
-- Komponen UI tidak boleh memuat seluruh logika perhitungan simulasi.
-
-### Penyimpanan
-Gunakan LocalStorage untuk menyimpan:
-- Modul yang selesai.
-- Eksperimen yang diselesaikan.
-- Riwayat percobaan kuis.
-- Waktu pembaruan terakhir.
-
-Gunakan satu kunci penyimpanan yang konsisten, misalnya:
-
-`reaksi-lab-progress`
-
-Tangani data penyimpanan yang tidak valid, data lama, atau kegagalan akses LocalStorage dengan aman.
-
----
-
-## 14. Persyaratan Desain UI/UX
-
-### Identitas Visual
-Gunakan desain laboratorium digital yang modern, bersih, dan akademis.
-
-### Prinsip Desain
-- Hierarki informasi yang jelas.
-- Navigasi konsisten.
-- Tata letak tidak terlalu padat.
-- Kontras warna yang memadai.
-- Tipografi yang mudah dibaca.
-- Ikon yang konsisten.
-- Animasi ringan dan fungsional.
-- Umpan balik visual pada interaksi pengguna.
-
-### Responsivitas
-Aplikasi harus dapat digunakan pada:
-- Desktop.
-- Laptop.
-- Tablet.
-- Ponsel.
-
-Pada layar kecil, navigasi dan panel kontrol harus menyesuaikan tanpa menyebabkan konten terpotong atau gulir horizontal yang tidak diperlukan.
-
-### Aksesibilitas
-- Gunakan elemen HTML semantik.
-- Sediakan label untuk input.
-- Pastikan kontrol dapat digunakan dengan keyboard.
-- Jangan hanya menggunakan warna untuk menyampaikan informasi.
-- Berikan teks alternatif untuk gambar yang bermakna.
-- Gunakan ukuran teks yang nyaman dibaca.
-- Pastikan grafik memiliki deskripsi atau ringkasan tekstual.
-
----
-
-## 15. Persyaratan Fungsional
-
-### FR-01 — Dashboard
-Sistem menampilkan pengenalan aplikasi, akses fitur utama, dan ringkasan progres siswa.
-
-### FR-02 — Daftar Modul
-Sistem menampilkan seluruh modul materi beserta deskripsi dan status penyelesaian.
-
-### FR-03 — Detail Materi
-Siswa dapat membuka modul, membaca materi, mempelajari contoh soal, dan melihat ringkasan.
-
-### FR-04 — Penyelesaian Materi
-Siswa dapat menandai modul sebagai selesai. Status disimpan pada LocalStorage.
-
-### FR-05 — Daftar Eksperimen
-Sistem menampilkan daftar eksperimen dan faktor yang dipelajari.
-
-### FR-06 — Pengaturan Variabel
-Siswa dapat mengubah parameter eksperimen dalam rentang yang valid.
-
-### FR-07 — Simulasi
-Sistem menghasilkan visualisasi dan data berdasarkan parameter eksperimen.
-
-### FR-08 — Hasil Eksperimen
-Sistem menampilkan hasil simulasi, grafik, dan penjelasan ilmiah.
-
-### FR-09 — Reset Eksperimen
-Siswa dapat mengembalikan parameter ke nilai awal dan menjalankan eksperimen kembali.
-
-### FR-10 — Kuis
-Siswa dapat menjawab pertanyaan dan memperoleh umpan balik.
-
-### FR-11 — Hasil Kuis
-Sistem menampilkan skor, jumlah jawaban benar, dan pembahasan.
-
-### FR-12 — Riwayat Kuis
-Sistem menyimpan hasil kuis ke LocalStorage.
-
-### FR-13 — Progres Belajar
-Sistem menampilkan status penyelesaian materi dan eksperimen serta ringkasan hasil kuis.
-
-### FR-14 — Persistensi Data
-Data progres tetap tersedia setelah halaman dimuat ulang pada browser dan perangkat yang sama, selama data browser tidak dihapus.
-
-### FR-15 — Penanganan Kesalahan
-Sistem menampilkan pesan yang jelas apabila terjadi kesalahan input, data tidak valid, atau kegagalan penyimpanan.
-
----
-
-## 16. Persyaratan Nonfungsional
-
-### Kinerja
-- Antarmuka harus terasa responsif.
-- Perubahan parameter simulasi tidak boleh menyebabkan pembekuan halaman.
-- Animasi harus dibatasi agar tidak mengganggu interaksi.
-- Hindari perhitungan berulang yang tidak diperlukan.
-
-### Keandalan
-- Navigasi tidak boleh mengarah ke halaman kosong.
-- Tombol harus menjalankan fungsi yang sesuai.
-- Data yang tidak tersedia harus ditangani dengan aman.
-- Kegagalan LocalStorage tidak boleh menyebabkan seluruh aplikasi berhenti.
-
-### Pemeliharaan
-- Pisahkan komponen UI, data, logika simulasi, dan penyimpanan.
-- Gunakan penamaan fungsi dan variabel yang jelas.
+1. Peran dan Tujuan
+Kamu adalah coding agent yang bertugas mengembangkan dan memelihara
+REAKSI LAB, sebuah aplikasi pembelajaran kimia berbasis web untuk
+siswa SMA/MA kelas XI pada materi Laju Reaksi.
+
+Bertindaklah sebagai: - Senior frontend developer yang memahami React
+dan Vite. - Pengembang media pembelajaran interaktif. - Perancang
+simulasi edukasi yang memperhatikan ketepatan konsep kimia. - Penguji
+kualitas aplikasi dan pengalaman pengguna.
+
+Tujuan utama adalah mengembangkan aplikasi yang benar-benar berfungsi,
+mudah digunakan, responsif, dan benar secara ilmiah. Jangan berhenti
+pada mockup atau tampilan statis.
+2. Sumber Acuan dan Prioritas Instruksi
+Gunakan urutan prioritas berikut ketika mengambil keputusan:
+1. Instruksi eksplisit terbaru dari pengguna.
+2. PRD.md versi terbaru pada repository.
+3. Dokumen AGENT.md ini.
+4. Struktur, pola, dan implementasi proyek yang sudah berjalan.
+5. Asumsi teknis yang paling sederhana dan konsisten.
+Jika terdapat perbedaan antara dokumen ini dan PRD terbaru, ikuti PRD
+terbaru kecuali pengguna secara eksplisit menentukan lain. Jika detail
+belum ditentukan, pilih solusi sederhana, jelaskan asumsi penting, dan
+jangan memperluas ruang lingkup tanpa alasan.
+3. Batasan Perubahan Proyek
+Prioritas perubahan saat ini adalah fitur Laboratorium Virtual.
+Jangan mengubah bagian lain yang tidak diminta.
+
+Pertahankan fitur dan perilaku yang sudah berfungsi, termasuk: -
+Dashboard/beranda. - Modul dan halaman materi. - Contoh soal dan
+pembahasan. - Navigasi dan layout utama. - Kuis di luar alur
+laboratorium, jika sudah tersedia. - Progres belajar. - Penyimpanan
+LocalStorage. - Identitas visual dan responsivitas aplikasi.
+
+Sebelum mengedit: 1. Periksa struktur folder proyek. 2. Baca
+package.json, konfigurasi Vite, routing, dan komponen terkait. 3.
+Periksa implementasi laboratorium yang sudah ada. 4. Identifikasi
+komponen dan layanan yang dapat digunakan kembali. 5. Buat rencana
+perubahan singkat sebelum melakukan perubahan besar.
+
+Jangan: - Membuat ulang proyek dari awal. - Mengganti framework atau
+bahasa pemrograman. - Menghapus fitur yang sudah ada. - Mengubah desain
+global tanpa kebutuhan. - Mengganti dependensi atau menambahkan library
+besar tanpa alasan teknis. - Mengubah halaman selain yang diperlukan
+untuk integrasi laboratorium. - Mengklaim fitur selesai jika baru berupa
+tampilan atau data statis.
+4. Teknologi dan Arsitektur
+Ikuti teknologi yang telah digunakan proyek: - React. - Vite. -
+JavaScript ES Modules. - CSS yang sudah digunakan proyek. - React Router
+jika sudah diterapkan. - LocalStorage untuk progres dan data kegiatan
+siswa.
+
+Jangan memigrasikan proyek ke TypeScript, framework lain, backend,
+database, autentikasi, atau layanan eksternal kecuali pengguna
+memintanya.
+
+Pisahkan tanggung jawab: - Komponen UI menangani tampilan dan
+interaksi. - Service simulasi menangani logika pergerakan, tumbukan,
+pembentukan produk, dan perhitungan indikator. - Service pengamatan
+menangani validasi serta penyimpanan formulir. - Service progres
+menangani status penyelesaian dan riwayat. - Modul data menyimpan
+konfigurasi eksperimen dan pertanyaan kuis.
+
+Hindari menempatkan seluruh logika simulasi di dalam satu komponen
+React.
+5. Spesifikasi Inti Laboratorium Virtual
+5.1 Model Reaksi
+Laboratorium memodelkan reaksi konseptual:
+
+A + B → Produk
+
+A dan B adalah simbol dua reaktan yang digunakan untuk pembelajaran
+teori tumbukan. Model ini bukan representasi mekanisme dari suatu reaksi
+kimia spesifik.
+
+Ketentuan: - Partikel A dan B harus mudah dibedakan secara visual. -
+Produk memiliki representasi visual berbeda dari reaktan. - Reaksi hanya
+terjadi ketika partikel A dan B mengalami tumbukan yang memenuhi
+kriteria efektif dalam model. - Ketika reaksi terjadi, partikel A dan B
+yang bereaksi dikonversi menjadi produk sesuai aturan model. - Jumlah
+reaktan dan produk harus diperbarui secara konsisten. - Jangan
+menampilkan pembentukan produk hanya sebagai animasi dekoratif yang
+tidak terhubung dengan perhitungan simulasi.
+5.2 Variabel yang Dapat Diubah
+Sediakan kontrol interaktif untuk:
+
+Konsentrasi A - Dapat diubah secara independen dari konsentrasi B. -
+Peningkatan konsentrasi direpresentasikan dengan peningkatan
+jumlah/kepadatan partikel A pada volume simulasi yang sama. - Perubahan
+harus memengaruhi peluang tumbukan A--B dalam model.
+
+Konsentrasi B - Dapat diubah secara independen dari konsentrasi A. -
+Peningkatan konsentrasi direpresentasikan dengan peningkatan
+jumlah/kepadatan partikel B pada volume simulasi yang sama. - Perubahan
+harus memengaruhi peluang tumbukan A--B dalam model.
+
+Suhu - Tampilkan satuan suhu secara konsisten, misalnya °C. - Suhu
+memengaruhi kecepatan gerak partikel dan parameter energi kinetik
+model. - Suhu lebih tinggi harus direpresentasikan dengan gerak partikel
+yang lebih cepat. - Model harus menjelaskan bahwa kenaikan suhu
+meningkatkan energi kinetik rata-rata dan fraksi tumbukan yang memiliki
+energi cukup untuk bereaksi.
+
+Katalis - Bukan variabel wajib pada implementasi inti. - Tambahkan
+hanya jika pengaruhnya dapat dimodelkan secara ilmiah dan dijelaskan
+dengan benar. - Jangan menggambarkan katalis sebagai reaktan yang habis
+atau menjadi produk. - Jangan membuat kontrol katalis yang tidak
+memiliki pengaruh nyata terhadap simulasi.
+
+Setiap kontrol harus memiliki label, nilai saat ini, rentang yang valid,
+dan nilai default yang jelas.
+5.3 Variabel Kontrol
+Ketika siswa menguji satu faktor, variabel lain yang relevan harus tetap
+pada nilai yang sama. Tampilkan dengan jelas: - Variabel yang sedang
+dimanipulasi. - Variabel yang dikendalikan. - Nilai parameter yang
+digunakan pada percobaan.
+
+Sediakan kondisi pengujian yang adil. Misalnya, ketika menguji
+konsentrasi A, pertahankan konsentrasi B, suhu, volume, dan durasi
+pengamatan.
+5.4 Visualisasi Mikroskopik
+Area simulasi harus menampilkan: - Partikel A dan B yang bergerak. -
+Perbedaan identitas partikel A, B, dan produk. - Peristiwa tumbukan
+A--B. - Pembedaan tumbukan biasa dan tumbukan efektif. - Pembentukan
+produk setelah tumbukan efektif. - Perubahan kepadatan partikel saat
+konsentrasi diubah. - Perubahan kecepatan partikel saat suhu diubah.
+
+Visualisasi harus dikendalikan oleh parameter simulasi. Jangan membuat
+animasi yang hanya terlihat menarik tetapi tidak mewakili data atau
+logika reaksi.
+
+Jika orientasi tumbukan tidak dimodelkan, jelaskan keterbatasan
+tersebut. Jangan mengklaim model telah mensimulasikan seluruh aspek
+tumbukan molekuler jika implementasinya belum mendukung.
+5.5 Data Simulasi
+Tampilkan indikator secara terpisah dan dengan definisi yang jelas:
+- Jumlah tumbukan A--B: jumlah peristiwa tumbukan yang terdeteksi
+  selama simulasi.
+- Frekuensi tumbukan: jumlah tumbukan A--B per interval waktu atau
+  per satuan waktu.
+- Jumlah tumbukan efektif: jumlah tumbukan yang memenuhi kriteria
+  reaksi dalam model.
+- Jumlah produk: jumlah produk yang terbentuk selama simulasi.
+- Laju reaksi model: perubahan jumlah produk atau berkurangnya
+  reaktan per satuan waktu sesuai definisi yang digunakan.
+Jangan menyamakan frekuensi tumbukan dengan jumlah tumbukan efektif atau
+laju reaksi. Berikan keterangan "hasil model" atau "nilai relatif"
+apabila data tidak memiliki satuan eksperimen fisik.
+
+Semua angka harus berasal dari hasil simulasi aktual, bukan angka statis
+yang tidak berubah ketika parameter diubah.
+5.6 Grafik
+Jika grafik disediakan: - Gunakan data simulasi aktual. - Berikan judul,
+label sumbu, legenda, dan satuan/keterangan nilai relatif. - Gunakan
+skala yang masuk akal. - Perbarui grafik ketika simulasi dijalankan
+ulang dengan parameter berbeda. - Jangan menampilkan grafik dekoratif
+yang tidak terhubung dengan data.
+5.7 Kontrol Simulasi
+Implementasikan fungsi: - Mulai. - Jeda. - Lanjutkan. - Ulangi dengan
+parameter yang sama dari kondisi awal. - Reset parameter ke nilai
+default.
+
+Kontrol harus memiliki status yang tepat. Jeda harus menghentikan
+pembaruan simulasi, bukan hanya menghentikan animasi visual sementara
+penghitung tetap berjalan.
+6. Formulir Data Pengamatan
+Setelah siswa menjalankan simulasi, sediakan formulir pengamatan yang
+meminta siswa mencatat dan menafsirkan hasil.
+
+Formulir sekurang-kurangnya memuat:
+
+Identitas dan parameter - Judul/ID percobaan. - Faktor yang diuji. -
+Konsentrasi A. - Konsentrasi B. - Suhu. - Durasi simulasi.
+
+Data kuantitatif - Jumlah tumbukan A--B. - Frekuensi tumbukan. -
+Jumlah tumbukan efektif. - Jumlah produk. - Laju reaksi model.
+
+Respons siswa - Catatan pengamatan. - Analisis hubungan variabel
+dengan hasil simulasi. - Perbandingan hasil jika siswa melakukan lebih
+dari satu percobaan. - Kesimpulan berdasarkan data.
+
+Aturan formulir: - Gunakan label yang jelas dan satuan/keterangan nilai
+yang sesuai. - Validasi kolom wajib dan format angka. - Tampilkan pesan
+validasi yang spesifik. - Jangan mengisi analisis atau kesimpulan siswa
+secara otomatis. - Izinkan siswa memeriksa dan mengedit isian sebelum
+menyimpan. - Setelah disimpan, tampilkan ringkasan pengamatan. - Simpan
+hasil pengamatan di LocalStorage. - Pisahkan data hasil mesin simulasi
+dari catatan dan interpretasi siswa.
+7. Kuis Interaktif Laboratorium
+Kuis laboratorium harus berkaitan dengan simulasi dan data pengamatan
+siswa.
+
+Cakupan pertanyaan: - Pengaruh konsentrasi A terhadap tumbukan A--B. -
+Pengaruh konsentrasi B terhadap tumbukan A--B. - Pengaruh suhu terhadap
+gerak partikel. - Perbedaan frekuensi tumbukan dan tumbukan efektif. -
+Hubungan tumbukan efektif dengan laju reaksi model. - Interpretasi tabel
+atau grafik hasil simulasi. - Penarikan kesimpulan dari perbandingan
+kondisi eksperimen.
+
+Ketentuan: - Versi pertama menggunakan pilihan ganda dengan satu jawaban
+benar. - Setiap soal memiliki opsi, kunci, penjelasan, dan tingkat
+kesulitan. - Siswa harus mengirim jawaban sebelum kunci ditampilkan. -
+Setelah dikirim, tampilkan umpan balik langsung. - Jawaban benar
+menampilkan status "Benar", apresiasi singkat, dan alasan ilmiah. -
+Jawaban salah menampilkan status "Belum tepat", penjelasan kekeliruan,
+dan konsep yang benar. - Umpan balik tidak boleh hanya berupa perubahan
+warna atau ikon. - Siswa dapat melanjutkan ke soal berikutnya setelah
+feedback muncul. - Setelah kuis selesai, tampilkan skor, jumlah
+benar/salah, dan pembahasan. - Sediakan opsi mengulang kuis. - Simpan
+riwayat kuis pada LocalStorage.
+8. Alur Belajar Laboratorium
+Implementasikan alur berikut secara terhubung:
+1. Siswa membuka Laboratorium Virtual.
+2. Sistem menampilkan tujuan, petunjuk, dan model reaksi A + B →
+   Produk.
+3. Siswa mengatur konsentrasi A, konsentrasi B, dan suhu.
+4. Siswa menjalankan simulasi.
+5. Siswa mengamati gerak partikel, tumbukan, tumbukan efektif, produk,
+   dan indikator data.
+6. Siswa dapat menjeda, melanjutkan, atau mengulangi simulasi.
+7. Siswa mengisi formulir data pengamatan.
+8. Sistem memvalidasi dan menyimpan pengamatan.
+9. Siswa mengerjakan kuis berdasarkan konsep dan hasil pengamatan.
+10. Sistem memberikan feedback untuk setiap jawaban.
+11. Sistem menampilkan ringkasan kegiatan dan memperbarui progres siswa.
+Jangan mengizinkan status kegiatan dinyatakan selesai hanya karena
+halaman dibuka. Tentukan penyelesaian berdasarkan aktivitas yang
+benar-benar dilakukan, misalnya simulasi dijalankan, pengamatan
+disimpan, dan kuis diselesaikan.
+9. Penyimpanan dan Model Data
+Gunakan LocalStorage sesuai pola penyimpanan proyek yang sudah ada.
+Pertahankan kunci penyimpanan lama jika memungkinkan agar progres
+sebelumnya tidak hilang.
+
+Data yang perlu dikelola: - Parameter eksperimen. - Hasil simulasi. -
+Data pengamatan siswa. - Jawaban kuis. - Skor dan riwayat kuis. - Status
+penyelesaian kegiatan. - Waktu pembaruan.
+
+Pisahkan objek hasil simulasi dari objek pengamatan siswa. Gunakan ID
+unik dan stabil. Tangani data LocalStorage yang rusak, kosong, atau
+tidak sesuai versi dengan aman. Jangan menyimpan data sensitif yang
+tidak diperlukan.
+10. UI/UX dan Aksesibilitas
+Pertahankan identitas visual aplikasi yang sudah ada. Untuk halaman
+laboratorium: - Buat hierarki yang jelas antara kontrol, area simulasi,
+indikator data, grafik, formulir, dan kuis. - Hindari memenuhi layar
+dengan terlalu banyak panel. - Gunakan tipografi yang mudah dibaca. -
+Pastikan kontras memadai. - Gunakan ikon dan teks untuk memperjelas
+status. - Jangan hanya mengandalkan warna untuk membedakan A, B, produk,
+tumbukan, atau feedback. - Pastikan input memiliki label. - Pastikan
+kontrol dapat digunakan dengan keyboard. - Berikan deskripsi tekstual
+untuk grafik dan indikator penting. - Pastikan layout tetap nyaman pada
+desktop, tablet, dan ponsel. - Cegah overflow horizontal yang tidak
+diperlukan.
+
+Animasi harus ringan, tidak menghambat interaksi, dan dapat dijeda.
+11. Kualitas Ilmiah dan Validasi
+Ketepatan kimia merupakan persyaratan utama.
+
+Pastikan: - Konsentrasi A dan B dapat diubah secara terpisah. -
+Konsentrasi yang lebih tinggi pada volume sama direpresentasikan dengan
+kepadatan partikel yang lebih tinggi. - Suhu lebih tinggi
+direpresentasikan dengan energi kinetik rata-rata dan kecepatan partikel
+yang lebih tinggi. - Tidak semua tumbukan menghasilkan reaksi. -
+Tumbukan efektif dibedakan dari tumbukan total. - Pembentukan produk
+konsisten dengan aturan tumbukan efektif model. - Laju reaksi dihitung
+berdasarkan perubahan jumlah produk/reaktan per waktu sesuai definisi. -
+Variabel kontrol tidak berubah tanpa sengaja. - Data yang ditampilkan
+konsisten dengan animasi dan parameter. - Semua penyederhanaan model
+dijelaskan kepada siswa.
+
+Jangan menyatakan simulasi sebagai hasil eksperimen nyata atau sebagai
+prediksi kuantitatif reaksi kimia spesifik.
+12. Standar Implementasi Kode
+- Gunakan komponen yang kecil dan memiliki tanggung jawab jelas.
+- Gunakan nama variabel dan fungsi yang deskriptif.
 - Hindari duplikasi logika.
-- Gunakan komponen yang dapat digunakan kembali.
+- Pisahkan perhitungan dari rendering.
+- Bersihkan interval, animation frame, dan event listener ketika
+  komponen dilepas atau simulasi dihentikan.
+- Cegah beberapa loop animasi berjalan bersamaan.
+- Pastikan reset benar-benar mengembalikan state simulasi dan
+  penghitung.
+- Hindari mutasi state React secara langsung.
+- Tangani input kosong, nilai di luar rentang, dan nilai tidak valid.
+- Jangan menambahkan dependensi tanpa kebutuhan.
+- Jangan menaruh kredensial atau data rahasia di source code.
+13. Pengujian Wajib
+Sebelum menyatakan pekerjaan selesai, lakukan pemeriksaan yang relevan.
 
-### Keamanan dan Privasi
-- Jangan meminta data pribadi yang tidak diperlukan.
-- Jangan menyimpan informasi sensitif.
-- Jangan mengirim data siswa ke layanan eksternal tanpa kebutuhan dan persetujuan yang jelas.
+Pengujian simulasi - Konsentrasi A dapat diubah tanpa mengubah nilai
+B secara tidak sengaja. - Konsentrasi B dapat diubah tanpa mengubah
+nilai A secara tidak sengaja. - Suhu memengaruhi kecepatan partikel. -
+Jumlah tumbukan dan frekuensi tumbukan diperbarui. - Tumbukan efektif
+dihitung terpisah dari tumbukan total. - Produk terbentuk hanya ketika
+aturan efektif terpenuhi. - Jeda menghentikan simulasi. - Lanjutkan
+meneruskan simulasi. - Ulangi memulai simulasi dari kondisi awal dengan
+parameter yang sama. - Reset mengembalikan parameter default.
 
----
+Pengujian pengamatan - Kolom wajib divalidasi. - Format input
+diperiksa. - Data tersimpan setelah halaman dimuat ulang. - Ringkasan
+menampilkan data yang sesuai. - Catatan siswa tidak tertimpa data
+simulasi.
 
-## 17. Aturan Implementasi untuk Coding Agent
+Pengujian kuis - Jawaban benar memperoleh feedback benar. - Jawaban
+salah memperoleh feedback salah dan penjelasan. - Skor dihitung dengan
+benar. - Kuis dapat diselesaikan dan diulang. - Riwayat tersimpan dan
+dapat dibaca kembali.
 
-1. Periksa struktur proyek dan `package.json` sebelum mengubah kode.
-2. Pertahankan teknologi dan dependensi yang sudah berfungsi.
-3. Jangan membuat ulang proyek dari awal jika proyek yang ada dapat dikembangkan.
-4. Implementasikan fitur secara bertahap dan terintegrasi.
-5. Gunakan data dari file sumber yang telah ditentukan, bukan menyalin data yang sama ke banyak komponen.
-6. Pisahkan fungsi perhitungan dari komponen antarmuka.
-7. Pastikan seluruh tombol dan kontrol interaktif berfungsi.
-8. Hindari penggunaan data palsu yang ditampilkan seolah-olah merupakan hasil eksperimen nyata.
-9. Jangan menambahkan backend, autentikasi, atau dependensi besar tanpa kebutuhan.
-10. Tangani kondisi kosong, input tidak valid, dan kegagalan penyimpanan.
-11. Pastikan navigasi dan tampilan berfungsi di desktop serta perangkat seluler.
-12. Jalankan pemeriksaan build dan perbaiki kesalahan yang muncul.
-13. Jangan menghapus fitur proyek yang sudah ada tanpa alasan yang jelas.
-14. Jangan hanya membuat mockup statis; implementasikan perilaku interaktif yang dijelaskan dalam PRD.
-15. Jika ada detail yang belum ditentukan, pilih solusi sederhana yang konsisten dengan tujuan pembelajaran dan dokumentasikan asumsi penting.
+Pengujian aplikasi - Jalankan build atau pemeriksaan proyek yang
+tersedia. - Periksa console dan terminal untuk error. - Pastikan
+navigasi lama tetap berfungsi. - Pastikan dashboard, materi, dan progres
+tidak rusak. - Uji tampilan desktop dan mobile.
 
----
+Jangan mengklaim pengujian berhasil jika belum benar-benar dijalankan.
+14. Alur Kerja Agent
+Untuk setiap permintaan pengembangan:
+1. Pahami permintaan pengguna dan tentukan batas perubahan.
+2. Periksa file dan implementasi yang relevan.
+3. Sampaikan rencana singkat jika perubahan menyentuh beberapa bagian.
+4. Implementasikan perubahan sekecil mungkin tetapi lengkap.
+5. Periksa integrasi dengan fitur yang sudah ada.
+6. Jalankan pengujian yang relevan.
+7. Perbaiki error yang ditemukan.
+8. Laporkan file yang diubah, fitur yang selesai, hasil pengujian, dan
+   keterbatasan yang masih ada.
+Jangan berhenti setelah membuat komponen atau tampilan. Pastikan
+interaksi, perhitungan, penyimpanan, dan alur pengguna benar-benar
+terhubung.
+15. Format Laporan Penyelesaian
+Setelah tugas selesai, berikan laporan ringkas dengan format:
+- Ringkasan: perubahan yang dilakukan.
+- File diubah: daftar file yang dibuat atau dimodifikasi.
+- Perilaku fitur: cara kerja fitur setelah perubahan.
+- Pengujian: perintah dan pemeriksaan yang benar-benar dijalankan
+  beserta hasilnya.
+- Catatan: asumsi, keterbatasan model, atau pekerjaan yang belum
+  selesai.
+Jika ada bagian yang tidak dapat diselesaikan, nyatakan secara jujur dan
+jelaskan penyebabnya. Jangan menyatakan semua fitur selesai jika masih
+ada tombol, alur, atau perhitungan yang belum berfungsi.
+Instruksi Utama
+Kembangkan REAKSI LAB secara bertahap dengan mempertahankan aplikasi
+yang sudah ada. Untuk pekerjaan saat ini, fokuskan perubahan pada
+Laboratorium Virtual sesuai PRD terbaru: simulasi mikroskopik reaksi A +
+B, manipulasi konsentrasi A dan B serta suhu, data frekuensi tumbukan
+dan laju reaksi, formulir pengamatan, dan kuis interaktif dengan
+feedback benar/salah yang menjelaskan konsep.
 
-## 18. Tahapan Pengembangan
-
-### Tahap 1 — Fondasi Aplikasi
-- Menyiapkan struktur proyek.
-- Membuat layout dan navigasi.
-- Menyiapkan desain responsif.
-- Menyusun sistem data.
-
-### Tahap 2 — Modul Materi
-- Membuat daftar modul.
-- Membuat halaman detail materi.
-- Menambahkan contoh soal dan ringkasan.
-- Menyimpan status penyelesaian.
-
-### Tahap 3 — Laboratorium Virtual
-- Membuat kontrol parameter.
-- Membuat mesin simulasi.
-- Menampilkan visualisasi partikel.
-- Menampilkan data hasil dan grafik.
-
-### Tahap 4 — Kuis
-- Membuat komponen pertanyaan.
-- Mengimplementasikan penilaian.
-- Menampilkan pembahasan.
-- Menyimpan riwayat kuis.
-
-### Tahap 5 — Progres dan Integrasi
-- Menghubungkan seluruh fitur.
-- Menghitung progres belajar.
-- Menangani data kosong dan data tidak valid.
-- Memastikan seluruh navigasi berfungsi.
-
-### Tahap 6 — Pengujian dan Penyempurnaan
-- Menguji seluruh tombol.
-- Menguji perhitungan.
-- Menguji penyimpanan dan pemuatan progres.
-- Menguji tampilan responsif.
-- Memperbaiki kesalahan build.
-- Memastikan konten ilmiah benar.
-
----
-
-## 19. Kriteria Penerimaan
-
-Produk dinyatakan memenuhi kebutuhan minimum apabila:
-
-- [ ] Aplikasi dapat dijalankan tanpa kesalahan build.
-- [ ] Dashboard dapat dibuka dan menampilkan informasi yang relevan.
-- [ ] Seluruh modul materi dapat diakses.
-- [ ] Materi memiliki penjelasan, contoh soal, dan ringkasan.
-- [ ] Status penyelesaian modul dapat disimpan.
-- [ ] Seluruh eksperimen dapat dijalankan.
-- [ ] Perubahan parameter menghasilkan perubahan simulasi yang konsisten.
-- [ ] Variabel kontrol dijelaskan dengan benar.
-- [ ] Grafik memiliki label yang sesuai.
-- [ ] Kuis dapat dikerjakan hingga selesai.
-- [ ] Skor kuis dihitung dengan benar.
-- [ ] Pembahasan muncul sesuai jawaban.
-- [ ] Riwayat kuis tersimpan dan dapat dimuat kembali.
-- [ ] Progres belajar diperbarui setelah aktivitas selesai.
-- [ ] Data progres tetap tersedia setelah halaman dimuat ulang.
-- [ ] Aplikasi dapat digunakan pada desktop dan ponsel.
-- [ ] Tidak ada tombol utama yang tidak berfungsi.
-- [ ] Tidak ada hasil simulasi yang diklaim sebagai data eksperimen nyata.
-
----
-
-## 20. Prioritas Pengembangan
-
-### P0 — Wajib
-- Navigasi.
-- Modul materi.
-- Laboratorium virtual dasar.
-- Kuis.
-- Penyimpanan progres.
-- Desain responsif.
-
-### P1 — Penting
-- Visualisasi partikel yang lebih informatif.
-- Grafik hasil simulasi.
-- Riwayat kuis.
-- Ringkasan progres.
-- Aksesibilitas yang lebih baik.
-
-### P2 — Pengembangan Berikutnya
-- Penambahan eksperimen.
-- Analisis hasil belajar lebih lanjut.
-- Fitur refleksi siswa.
-- Pengayaan visualisasi.
-- Integrasi penyimpanan daring apabila dibutuhkan.
-
----
-
-## 21. Prinsip Keberhasilan Produk
-
-REAKSI LAB harus menjadi media pembelajaran yang:
-
-1. Benar secara ilmiah.
-2. Mudah digunakan oleh siswa SMA/MA.
-3. Mengutamakan pemahaman konsep.
-4. Menghubungkan teori dengan hasil simulasi.
-5. Memberikan umpan balik yang bermakna.
-6. Menyimpan progres secara konsisten.
-7. Memiliki antarmuka responsif dan mudah diakses.
-8. Dapat dikembangkan tanpa merombak seluruh arsitektur.
-
-**Instruksi akhir:** Bangun REAKSI LAB sebagai aplikasi pembelajaran interaktif yang benar-benar berfungsi. Prioritaskan ketepatan konsep kimia, keterpaduan antarf fitur, kemudahan penggunaan, dan stabilitas aplikasi. Jangan berhenti pada desain visual atau halaman statis.
+Utamakan ketepatan kimia, konsistensi data, fungsi interaksi, pengalaman
+belajar siswa, dan stabilitas aplikasi. Jangan melakukan perubahan di
+luar ruang lingkup tanpa persetujuan pengguna.

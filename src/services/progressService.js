@@ -9,6 +9,7 @@ const STORAGE_KEY = 'reaksi-lab-progress';
 const DEFAULT_PROGRESS = {
   completedModules: [],
   completedExperiments: [],
+  completedObservations: [],
   quizAttempts: [],
   lastUpdated: new Date().toISOString()
 };
@@ -25,6 +26,7 @@ export function getStoredProgress() {
     return {
       completedModules: Array.isArray(parsed?.completedModules) ? parsed.completedModules : [],
       completedExperiments: Array.isArray(parsed?.completedExperiments) ? parsed.completedExperiments : [],
+      completedObservations: Array.isArray(parsed?.completedObservations) ? parsed.completedObservations : [],
       quizAttempts: Array.isArray(parsed?.quizAttempts) ? parsed.quizAttempts : [],
       lastUpdated: parsed?.lastUpdated || new Date().toISOString()
     };
@@ -78,6 +80,20 @@ export function markExperimentCompleted(experimentId) {
   return saveProgress({
     ...current,
     completedExperiments: [...current.completedExperiments, experimentId]
+  });
+}
+
+/**
+ * Menandai lembar pengamatan eksperimen sebagai selesai
+ */
+export function markObservationCompleted(experimentId) {
+  const current = getStoredProgress();
+  if (current.completedObservations.includes(experimentId)) {
+    return current;
+  }
+  return saveProgress({
+    ...current,
+    completedObservations: [...current.completedObservations, experimentId]
   });
 }
 

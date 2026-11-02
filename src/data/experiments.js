@@ -1,101 +1,137 @@
 /**
  * data/experiments.js
- * Daftar Eksperimen Virtual Kimia Laju Reaksi - REAKSI LAB
- * Sesuai spesifikasi PRD Bab 8 & Bab 11
+ * Daftar Eksperimen Virtual Kimia Laju Reaksi (Model A + B -> Produk) - REAKSI LAB
+ * Sesuai spesifikasi PRD Bab 8, Bab 11, & AGENT.md Bab 5
  */
 
 export const EXPERIMENTS_DATA = [
   {
     id: 'exp-konsentrasi',
     code: 'LAB-01',
-    title: 'Pengaruh Konsentrasi terhadap Laju Reaksi',
-    description: 'Eksplorasi hubungan kerapatan partikel zat pereaksi dengan frekuensi tumbukan molekul dan waktu pembentukan produk.',
-    factor: 'Konsentrasi',
-    badge: 'Kerapatan Partikel',
+    title: 'Pengaruh Konsentrasi Reaktan A terhadap Frekuensi Tumbukan',
+    description: 'Eksplorasi hubungan kerapatan partikel zat pereaksi A dengan frekuensi tumbukan molekul A-B dan laju pembentukan produk.',
+    reaction: 'A + B → Produk',
+    factor: 'Konsentrasi A',
+    badge: 'Kerapatan Partikel A',
+    manipulatedVariable: 'concA',
     variables: {
       independent: 'Konsentrasi Reaktan A (0.1 M - 2.0 M)',
-      dependent: 'Laju Reaksi (v) & Waktu Reaksi (t)',
-      controlled: 'Suhu (25°C), Volume Total (100 mL), Tanpa Katalis'
+      dependent: 'Frekuensi Tumbukan A-B & Laju Pembentukan Produk',
+      controlled: 'Konsentrasi B (1.0 M), Suhu (25°C), Volume Tetap, Tanpa Katalis'
     },
     defaultParameters: {
-      concentration: 1.0,
+      concA: 1.0,
+      concB: 1.0,
       temperature: 25,
-      surfaceArea: 'medium',
       hasCatalyst: false
     },
+    parameterRanges: {
+      concA: { min: 0.1, max: 2.0, step: 0.1, unit: 'M' },
+      concB: { min: 0.1, max: 2.0, step: 0.1, unit: 'M' },
+      temperature: { min: 10, max: 80, step: 5, unit: '°C' }
+    },
     learningObjectives: [
-      'Melihat representasi mikroskopik pertambahan jumlah partikel per satuan volume saat konsentrasi dinaikkan.',
-      'Mengamati grafik penurunan konsentrasi reaktan dan pertambahan produk terhadap waktu.'
-    ]
+      'Mengamati representasi mikroskopik pertambahan jumlah/kepadatan partikel A saat konsentrasi A dinaikkan.',
+      'Membuktikan bahwa peningkatan konsentrasi A meningkatkan peluang pertemuan dan frekuensi tumbukan A-B.',
+      'Membedakan frekuensi tumbukan total dari tumbukan efektif yang menghasilkan produk.'
+    ],
+    scientificNote: 'Model konseptual A + B → Produk: peningkatan konsentrasi reaktan memperbesar peluang tumbukan per satuan waktu.'
+  },
+  {
+    id: 'exp-konsentrasi-b',
+    code: 'LAB-02',
+    title: 'Pengaruh Konsentrasi Reaktan B terhadap Frekuensi Tumbukan',
+    description: 'Investigasi pengaruh manipulasi konsentrasi pereaksi B secara independen sementara konsentrasi A dijaga konstan.',
+    reaction: 'A + B → Produk',
+    factor: 'Konsentrasi B',
+    badge: 'Kerapatan Partikel B',
+    manipulatedVariable: 'concB',
+    variables: {
+      independent: 'Konsentrasi Reaktan B (0.1 M - 2.0 M)',
+      dependent: 'Frekuensi Tumbukan A-B & Laju Pembentukan Produk',
+      controlled: 'Konsentrasi A (1.0 M), Suhu (25°C), Volume Tetap, Tanpa Katalis'
+    },
+    defaultParameters: {
+      concA: 1.0,
+      concB: 0.5,
+      temperature: 25,
+      hasCatalyst: false
+    },
+    parameterRanges: {
+      concA: { min: 0.1, max: 2.0, step: 0.1, unit: 'M' },
+      concB: { min: 0.1, max: 2.0, step: 0.1, unit: 'M' },
+      temperature: { min: 10, max: 80, step: 5, unit: '°C' }
+    },
+    learningObjectives: [
+      'Memverifikasi bahwa konsentrasi B dapat diubah secara independen dari konsentrasi A.',
+      'Mengamati efek kepadatan partikel B terhadap intensitas tumbukan antarpartikel reaktan.',
+      'Menilai pengaruh rasio stoikiometri partikel terhadap pembentukan produk akhir.'
+    ],
+    scientificNote: 'Menjaga konsentrasi A tetap konstan merupakan prinsip variabel kontrol untuk pengujian yang adil.'
   },
   {
     id: 'exp-suhu',
-    code: 'LAB-02',
-    title: 'Pengaruh Suhu terhadap Laju Reaksi',
-    description: 'Investigasi peningkatan energi kinetik partikel dan lonjakan persentase tumbukan efektif yang melampaui energi aktivasi.',
-    factor: 'Suhu',
-    badge: 'Energi Kinetik',
-    variables: {
-      independent: 'Suhu Reaksi (10°C - 80°C)',
-      dependent: 'Kecepatan Gerak Partikel & Laju Reaksi',
-      controlled: 'Konsentrasi (1.0 M), Luas Permukaan (Sedang), Tanpa Katalis'
-    },
-    defaultParameters: {
-      concentration: 1.0,
-      temperature: 30,
-      surfaceArea: 'medium',
-      hasCatalyst: false
-    },
-    learningObjectives: [
-      'Mengamati kecepatan acak gerak partikel saat suhu dinaikkan.',
-      'Memahami aturan perkiraan bahwa setiap kenaikan 10°C laju reaksi meningkat kira-kira 2 kali lipat.'
-    ]
-  },
-  {
-    id: 'exp-luas-permukaan',
     code: 'LAB-03',
-    title: 'Pengaruh Luas Permukaan Bidang Sentuh',
-    description: 'Simulasi interaksi partikel padat dalam bentuk bongkahan, kepingan, dan serbuk halus terhadap frekuensi kontak tumbukan.',
-    factor: 'Luas Permukaan',
-    badge: 'Bidang Kontak',
+    title: 'Pengaruh Suhu terhadap Energi Kinetik & Tumbukan Efektif',
+    description: 'Investigasi pengaruh kenaikan suhu sistem terhadap kecepatan acak gerak partikel dan lonjakan persentase tumbukan efektif.',
+    reaction: 'A + B → Produk',
+    factor: 'Suhu Sistem',
+    badge: 'Energi Kinetik Partikel',
+    manipulatedVariable: 'temperature',
     variables: {
-      independent: 'Bentuk Fisik Padatan (Bongkahan, Butiran, Serbuk Halus)',
-      dependent: 'Area Kontak Reaksi & Waktu Penyelesaian',
-      controlled: 'Massa Padatan (5 gram), Konsentrasi Asam (1.0 M), Suhu (25°C)'
+      independent: 'Suhu Sistem Reaksi (10°C - 80°C)',
+      dependent: 'Kecepatan Partikel, Fraksi Tumbukan Efektif, & Laju Reaksi',
+      controlled: 'Konsentrasi A (1.0 M), Konsentrasi B (1.0 M), Volume Tetap, Tanpa Katalis'
     },
     defaultParameters: {
-      concentration: 1.0,
-      temperature: 25,
-      surfaceArea: 'serbuk',
+      concA: 1.0,
+      concB: 1.0,
+      temperature: 30,
       hasCatalyst: false
     },
+    parameterRanges: {
+      concA: { min: 0.1, max: 2.0, step: 0.1, unit: 'M' },
+      concB: { min: 0.1, max: 2.0, step: 0.1, unit: 'M' },
+      temperature: { min: 10, max: 80, step: 5, unit: '°C' }
+    },
     learningObjectives: [
-      'Membandingkan jumlah partikel luar yang terpapar langsung ke reaktan cair pada serbuk vs bongkahan.',
-      'Menghubungkan percepatan reaksi dengan pertambahan luas bidang sentuh total.'
-    ]
+      'Melihat korelasi langsung antara kenaikan suhu dengan kelajuan gerak mikroskopik partikel.',
+      'Menjelaskan bahwa kenaikan suhu meningkatkan energi kinetik rata-rata partikel sehingga lebih banyak partikel melampaui energi aktivasi (Ea).',
+      'Mengidentifikasi bahwa peningkatan suhu menaikkan laju reaksi secara signifikan melalui peningkatan fraksi tumbukan efektif.'
+    ],
+    scientificNote: 'Pada model teori tumbukan, kenaikan suhu menaikkan energi kinetik rata-rata sehingga memperbanyak fraksi tumbukan berenergi ≥ Ea.'
   },
   {
     id: 'exp-katalis',
     code: 'LAB-04',
-    title: 'Pengaruh Katalis terhadap Energi Aktivasi',
-    description: 'Analisis jalur reaksi alternatif dengan energi aktivasi lebih rendah (Ea) menggunakan katalis homogen maupun heterogen.',
+    title: 'Pengaruh Katalis terhadap Energi Aktivasi Reaksi',
+    description: 'Analisis peran katalis dalam menyediakan rute reaksi alternatif dengan energi aktivasi lebih rendah tanpa ikut dikonsumsi.',
+    reaction: 'A + B → Produk (dengan Katalis)',
     factor: 'Katalis',
-    badge: 'Jalur Alternatif Ea',
+    badge: 'Penurunan Energi Aktivasi (Ea)',
+    manipulatedVariable: 'hasCatalyst',
     variables: {
       independent: 'Penggunaan Katalis (Tanpa Katalis vs Dengan Katalis)',
-      dependent: 'Energi Aktivasi (Ea) & Waktu Reaksi',
-      controlled: 'Konsentrasi Pereaksi (1.0 M), Suhu (25°C), Volume (100 mL)'
+      dependent: 'Persentase Tumbukan Efektif & Waktu Selesai Reaksi',
+      controlled: 'Konsentrasi A (1.0 M), Konsentrasi B (1.0 M), Suhu (25°C)'
     },
     defaultParameters: {
-      concentration: 1.0,
+      concA: 1.0,
+      concB: 1.0,
       temperature: 25,
-      surfaceArea: 'medium',
       hasCatalyst: true
     },
+    parameterRanges: {
+      concA: { min: 0.1, max: 2.0, step: 0.1, unit: 'M' },
+      concB: { min: 0.1, max: 2.0, step: 0.1, unit: 'M' },
+      temperature: { min: 10, max: 80, step: 5, unit: '°C' }
+    },
     learningObjectives: [
-      'Meninjau kurva profil diagram energi potensial reaksi dengan dan tanpa katalis.',
-      'Memverifikasi bahwa katalis mempercepat laju tanpa ikut habis terpakai atau mengubah kestabilan produk.'
-    ]
+      'Memahami bahwa katalis mempercepat laju reaksi dengan menurunkan energi aktivasi reaksi.',
+      'Menyaksikan bahwa katalis tidak digambarkan habis atau berubah menjadi produk reaktan.',
+      'Membandingkan laju pembentukan produk antara kondisi tanpa katalis dan dengan katalis pada parameter lain yang identik.'
+    ],
+    scientificNote: 'Katalis memfasilitasi orientasi yang tepat dan menurunkan hambatan energi aktivasi sehingga fraksi tumbukan efektif meningkat.'
   }
 ];
 

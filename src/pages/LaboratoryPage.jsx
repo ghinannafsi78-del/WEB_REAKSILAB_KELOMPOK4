@@ -1,77 +1,202 @@
-import { useState, useMemo } from 'react';
+import { useState, useEffect } from 'react';
 import { EXPERIMENTS_DATA } from '../data/experiments.js';
+import { SimulationEngine } from '../services/simulationService.js';
+import { getObservationsByExperiment } from '../services/observationService.js';
+import { markObservationCompleted } from '../services/progressService.js';
+
+// Komponen Laboratorium
+import ParticleSimulation from '../components/laboratory/ParticleSimulation.jsx';
+import ReactionParameterControls from '../components/laboratory/ReactionParameterControls.jsx';
+import CollisionMetrics from '../components/laboratory/CollisionMetrics.jsx';
+import SimulationChart from '../components/laboratory/SimulationChart.jsx';
+import ObservationForm from '../components/laboratory/ObservationForm.jsx';
+import ObservationSummary from '../components/laboratory/ObservationSummary.jsx';
+import LaboratoryQuiz from '../components/laboratory/LaboratoryQuiz.jsx';
+import ExperimentSummaryReport from '../components/laboratory/ExperimentSummaryReport.jsx';
+
 import './LaboratoryPage.css';
 
 /**
  * LaboratoryPage.jsx
- * Laboratorium Virtual Interaktif 4 Faktor Laju Reaksi
+ * Laboratorium Virtual Interaktif Materi Laju Reaksi (Model Konseptual A + B -> Produk)
+ * Sesuai spesifikasi PRD Bab 8, Bab 9, & AGENT.md Bab 5, 6, 7, 8
  */
-export default function LaboratoryPage({ onNavigate, isExperimentCompleted, markExperiment, initialExperimentId = '' }) {
-  const [selectedExpId, setSelectedExpId] = useState(initialExperimentId || EXPERIMENTS_DATA[0].id);
+export default function LaboratoryPage({
+  onNavigate,
+  isExperimentCompleted,
+  markExperiment,
+  initialExperimentId = '',
+}) {
+  // 1. Pemilihan Eksperimen Aktif
+  const [selectedExpId, setSelectedExpId] = useState(
+    initialExperimentId || EXPERIMENTS_DATA[0].id
+  );
 
-  // Parameter State
-  const [concentration, setConcentration] = useState(1.0);
-  const [temperature, setTemperature] = useState(25);
-  const [surfaceArea, setSurfaceArea] = useState('medium');
-  const [hasCatalyst, setHasCatalyst] = useState(false);
-  const [isSimulating, setIsSimulating] = useState(false);
+  const activeExp =
+    EXPERIMENTS_DATA.find((e) => e.id === selectedExpId) || EXPERIMENTS_DATA[0];
 
-  const activeExp = EXPERIMENTS_DATA.find((e) => e.id === selectedExpId) || EXPERIMENTS_DATA[0];
-  const isDone = isExperimentCompleted(activeExp.id);
+  // 2. Tahap Alur Belajar: 'simulation' | 'observation' | 'quiz' | 'report'
+  const [activeStage, setActiveStage] = useState('simulation');
 
-  // Perhitungan ilmiah kualitatif laju reaksi sederhana
-  const simulationResults = useMemo(() => {
-    // Pengaruh konsentrasi (orde 1 estimasi)
-    const concFactor = concentration;
-    // Pengaruh suhu (aturan Arrhenius sederhana: naik 2x tiap +10°C di atas 25°C)
-    const tempFactor = Math.pow(2, (temperature - 25) / 10);
-    // Pengaruh luas permukaan
-    const surfaceFactor = surfaceArea === 'serbuk' ? 2.5 : surfaceArea === 'medium' ? 1.5 : 0.8;
-    // Pengaruh katalis (penurunan Ea mempercepat 3x)
-    const catalystFactor = hasCatalyst ? 3.0 : 1.0;
+  // 3. State Parameter Eksperimen
+  const [concA, setConcA] = useState(activeExp.defaultParameters.concA);
+  const [concB, setConcB] = useState(activeExp.defaultParameters.concB);
+  const [temperature, setTemperature] = useState(activeExp.defaultParameters.temperature);
+  const [hasCatalyst, setHasCatalyst] = useState(activeExp.defaultParameters.hasCatalyst);
 
-    const rateScore = concFactor * tempFactor * surfaceFactor * catalystFactor;
-    const estTimeSeconds = Math.max(1.5, (120 / rateScore)).toFixed(1);
-    const collisionFreq = Math.round(rateScore * 14);
+  // 4. Engine Simulasi dan State Metrik
+  const [simulationState, setSimulationState] = useState(() => ({
+    status: 'idle',
+    elapsedTime: 0,
+    maxDuration: 30,
+    collisionCount: 0,
+    collisionFrequency: 0,
+    effectiveCollisionCount: 0,
+    productCount: 0,
+    reactionRate: 0,
+    remainingA: Math.round(activeExp.defaultParameters.concA * 15),
+    remainingB: Math.round(activeExp.defaultParameters.concB * 15),
+    currentProductCount: 0,
+    parameters: {
+      concA: activeExp.defaultParameters.concA,
+      concB: activeExp.defaultParameters.concB,
+      temperature: activeExp.defaultParameters.temperature,
+      hasCatalyst: activeExp.defaultParameters.hasCatalyst,
+    },
+    timeSeries: [],
+  }));
 
-    return {
-      rateScore: rateScore.toFixed(2),
-      estTimeSeconds,
-      collisionFreq,
+  const [engine] = useState(() => {
+    return new SimulationEngine({
+      width: 600,
+      height: 360,
+      concA: activeExp.defaultParameters.concA,
+      concB: activeExp.defaultParameters.concB,
+      temperature: activeExp.defaultParameters.temperature,
+      hasCatalyst: activeExp.defaultParameters.hasCatalyst,
+      maxDuration: 30,
+    });
+  });
+
+  // 5. State Data Pengamatan Siswa & Kuis
+  const [savedObservation, setSavedObservation] = useState(() => {
+    const existing = getObservationsByExperiment(activeExp.id);
+    return existing.length > 0 ? existing[0] : null;
+  });
+  const [isEditingObservation, setIsEditingObservation] = useState(false);
+  const [quizResult, setQuizResult] = useState(null);
+
+  // Pasang listener onMetricsUpdate dan cleanup saat unmount
+  useEffect(() => {
+    engine.setOnMetricsUpdate((metrics) => {
+      setSimulationState(metrics);
+    });
+
+    return () => {
+      engine.destroy();
     };
-  }, [concentration, temperature, surfaceArea, hasCatalyst]);
+  }, [engine]);
 
-  const handleRunSimulation = () => {
-    setIsSimulating(true);
-    setTimeout(() => {
-      setIsSimulating(false);
-      markExperiment(activeExp.id);
-    }, 1200);
+  // Handler pemilihan tab eksperimen
+  const handleSelectExperiment = (exp) => {
+    setSelectedExpId(exp.id);
+    setActiveStage('simulation');
+    setConcA(exp.defaultParameters.concA);
+    setConcB(exp.defaultParameters.concB);
+    setTemperature(exp.defaultParameters.temperature);
+    setHasCatalyst(exp.defaultParameters.hasCatalyst);
+
+    const existingObs = getObservationsByExperiment(exp.id);
+    setSavedObservation(existingObs.length > 0 ? existingObs[0] : null);
+    setIsEditingObservation(false);
+    setQuizResult(null);
+
+    engine.resetToDefaults(exp.defaultParameters);
+    setSimulationState(engine.getMetrics());
   };
 
-  const handleResetParameters = () => {
-    setConcentration(activeExp.defaultParameters.concentration);
+  // Perbarui parameter di engine ketika state slider berubah
+  const handleUpdateConcA = (val) => {
+    setConcA(val);
+    engine.updateParameters({ concA: val });
+  };
+
+  const handleUpdateConcB = (val) => {
+    setConcB(val);
+    engine.updateParameters({ concB: val });
+  };
+
+  const handleUpdateTemperature = (val) => {
+    setTemperature(val);
+    engine.updateParameters({ temperature: val });
+  };
+
+  const handleUpdateCatalyst = (val) => {
+    setHasCatalyst(val);
+    engine.updateParameters({ hasCatalyst: val });
+  };
+
+  // Kontrol Eksekusi Simulasi
+  const handleStart = () => {
+    engine.startReaction();
+  };
+
+  const handlePause = () => {
+    engine.pause();
+  };
+
+  const handleResume = () => {
+    engine.resume();
+  };
+
+  const handleRestart = () => {
+    engine.restart();
+  };
+
+  const handleReset = () => {
+    engine.resetToDefaults(activeExp.defaultParameters);
+    setConcA(activeExp.defaultParameters.concA);
+    setConcB(activeExp.defaultParameters.concB);
     setTemperature(activeExp.defaultParameters.temperature);
-    setSurfaceArea(activeExp.defaultParameters.surfaceArea);
     setHasCatalyst(activeExp.defaultParameters.hasCatalyst);
   };
 
+  // Callback saat pengamatan disimpan
+  const handleObservationSaved = (obs) => {
+    setSavedObservation(obs);
+    setIsEditingObservation(false);
+    markObservationCompleted(activeExp.id);
+  };
+
+  // Callback saat kuis laboratorium selesai
+  const handleQuizCompleted = (result) => {
+    setQuizResult(result);
+    // Jika simulasi pernah dijalankan dan pengamatan disimpan, tandai eksperimen selesai!
+    if (markExperiment) {
+      markExperiment(activeExp.id);
+    }
+    setActiveStage('report');
+  };
+
+  const isExpDone = isExperimentCompleted(activeExp.id);
+
   return (
     <div className="lab-page-container">
-      {/* Header */}
-      <div className="lab-page-header">
+      {/* 1. Header Utama Halaman Lab */}
+      <header className="lab-page-header">
         <button className="back-btn" onClick={() => onNavigate('beranda')}>
           &larr; Kembali ke Beranda
         </button>
         <span className="page-category-badge">LABORATORIUM VIRTUAL INTERAKTIF</span>
-        <h1 className="lab-main-title">Simulasi Eksperimen Laju Reaksi</h1>
+        <h1 className="lab-main-title">Eksperimen Mikroskopik: Teori Tumbukan Laju Reaksi</h1>
         <p className="lab-main-subtitle">
-          Manipulasi variabel bebas dan amati dampaknya terhadap frekuensi tumbukan serta waktu reaksi secara real-time.
+          Eksplorasi visual reaksi konseptual <strong>A + B → Produk</strong>. Amati bagaimana konsentrasi dan suhu
+          memengaruhi kerapatan partikel, frekuensi tumbukan, tumbukan efektif, dan laju reaksi model secara real-time.
         </p>
-      </div>
+      </header>
 
-      {/* Tabs Eksperimen */}
-      <div className="lab-exp-nav-tabs">
+      {/* 2. Navigasi Pilihan Eksperimen */}
+      <nav className="lab-exp-nav-tabs" aria-label="Daftar Percobaan Laboratorium">
         {EXPERIMENTS_DATA.map((exp) => {
           const active = exp.id === selectedExpId;
           const done = isExperimentCompleted(exp.id);
@@ -80,185 +205,183 @@ export default function LaboratoryPage({ onNavigate, isExperimentCompleted, mark
             <button
               key={exp.id}
               className={`exp-tab-item ${active ? 'active' : ''}`}
-              onClick={() => {
-                setSelectedExpId(exp.id);
-                setConcentration(exp.defaultParameters.concentration);
-                setTemperature(exp.defaultParameters.temperature);
-                setSurfaceArea(exp.defaultParameters.surfaceArea);
-                setHasCatalyst(exp.defaultParameters.hasCatalyst);
-              }}
+              onClick={() => handleSelectExperiment(exp)}
             >
               <div className="tab-pill-row">
                 <span className="exp-code-pill">{exp.code}</span>
                 {done && <span className="tab-check">✓ Selesai</span>}
               </div>
               <strong className="exp-tab-factor">{exp.factor}</strong>
+              <span className="exp-tab-badge">{exp.badge}</span>
             </button>
           );
         })}
+      </nav>
+
+      {/* 3. Stepper Alur Belajar Laboratorium */}
+      <div className="lab-learning-stepper" role="navigation" aria-label="Alur Belajar Eksperimen">
+        <button
+          className={`step-btn ${activeStage === 'simulation' ? 'active' : ''}`}
+          onClick={() => setActiveStage('simulation')}
+        >
+          <span className="step-num">1</span>
+          <span className="step-title">Simulasi & Data Live</span>
+        </button>
+
+        <span className="step-arrow">&rarr;</span>
+
+        <button
+          className={`step-btn ${activeStage === 'observation' ? 'active' : ''} ${savedObservation ? 'has-data' : ''}`}
+          onClick={() => setActiveStage('observation')}
+        >
+          <span className="step-num">2</span>
+          <span className="step-title">Lembar Pengamatan {savedObservation ? '✓' : ''}</span>
+        </button>
+
+        <span className="step-arrow">&rarr;</span>
+
+        <button
+          className={`step-btn ${activeStage === 'quiz' ? 'active' : ''} ${quizResult ? 'has-data' : ''}`}
+          onClick={() => setActiveStage('quiz')}
+        >
+          <span className="step-num">3</span>
+          <span className="step-title">Kuis Pemahaman Lab {quizResult ? '✓' : ''}</span>
+        </button>
+
+        <span className="step-arrow">&rarr;</span>
+
+        <button
+          className={`step-btn ${activeStage === 'report' ? 'active' : ''} ${isExpDone ? 'is-complete' : ''}`}
+          onClick={() => setActiveStage('report')}
+        >
+          <span className="step-num">4</span>
+          <span className="step-title">Laporan Capaian {isExpDone ? '✓' : ''}</span>
+        </button>
       </div>
 
-      {/* Workspace Laboratorium */}
-      <div className="lab-workspace-grid">
-        {/* Panel Kontrol Variabel */}
-        <section className="lab-controls-panel" aria-labelledby="panel-title">
-          <div className="panel-header">
-            <h2 id="panel-title" className="panel-title">Panel Pengaturan Variabel</h2>
-            <button className="btn-reset-params" onClick={handleResetParameters}>
-              Reset Nilai Awal
-            </button>
-          </div>
-
-          <div className="controls-form">
-            {/* 1. Konsentrasi */}
-            <div className={`control-item ${activeExp.factor === 'Konsentrasi' ? 'highlight-control' : ''}`}>
-              <div className="control-label-row">
-                <label htmlFor="input-conc">Konsentrasi Pereaksi [A]</label>
-                <span className="control-value-display">{concentration} M</span>
-              </div>
-              <input
-                id="input-conc"
-                type="range"
-                min="0.1"
-                max="2.0"
-                step="0.1"
-                value={concentration}
-                onChange={(e) => setConcentration(parseFloat(e.target.value))}
+      {/* 4. Konten Utama Berdasarkan Tahap Aktif */}
+      <main className="lab-stage-content" role="region" aria-live="polite">
+        {/* TAHAP 1: SIMULASI MIKROSKOPIK & DATA LIVE */}
+        {activeStage === 'simulation' && (
+          <div className="simulation-stage-layout">
+            {/* Kolom Kiri: Panel Kontrol Parameter */}
+            <div className="stage-controls-col">
+              <ReactionParameterControls
+                experiment={activeExp}
+                concA={concA}
+                setConcA={handleUpdateConcA}
+                concB={concB}
+                setConcB={handleUpdateConcB}
+                temperature={temperature}
+                setTemperature={handleUpdateTemperature}
+                hasCatalyst={hasCatalyst}
+                setHasCatalyst={handleUpdateCatalyst}
+                status={simulationState.status}
+                onStart={handleStart}
+                onPause={handlePause}
+                onResume={handleResume}
+                onRestart={handleRestart}
+                onReset={handleReset}
               />
-              <span className="control-hint">Rentang: 0.1 M (encer) s.d. 2.0 M (pekat)</span>
             </div>
 
-            {/* 2. Suhu */}
-            <div className={`control-item ${activeExp.factor === 'Suhu' ? 'highlight-control' : ''}`}>
-              <div className="control-label-row">
-                <label htmlFor="input-temp">Suhu Lingkungan (°C)</label>
-                <span className="control-value-display">{temperature} °C</span>
-              </div>
-              <input
-                id="input-temp"
-                type="range"
-                min="10"
-                max="80"
-                step="5"
-                value={temperature}
-                onChange={(e) => setTemperature(parseInt(e.target.value, 10))}
+            {/* Kolom Kanan: Kanvas Mikroskopik, Metrik Kuantitatif, & Grafik */}
+            <div className="stage-visuals-col">
+              {/* Kanvas Simulasi Partikel */}
+              <ParticleSimulation
+                engine={engine}
+                status={simulationState.status}
+                temperature={temperature}
+                concA={concA}
+                concB={concB}
+                remainingA={simulationState.remainingA}
+                remainingB={simulationState.remainingB}
+                productCount={simulationState.productCount}
               />
-              <span className="control-hint">Rentang: 10°C (dingin) s.d. 80°C (panas)</span>
-            </div>
 
-            {/* 3. Luas Permukaan */}
-            <div className={`control-item ${activeExp.factor === 'Luas Permukaan' ? 'highlight-control' : ''}`}>
-              <label className="control-label-row">Bentuk Fisik Padatan</label>
-              <div className="surface-buttons-group">
-                {[
-                  { id: 'bongkahan', label: 'Bongkahan' },
-                  { id: 'medium', label: 'Butiran' },
-                  { id: 'serbuk', label: 'Serbuk Halus' },
-                ].map((s) => (
-                  <button
-                    key={s.id}
-                    className={`surface-btn ${surfaceArea === s.id ? 'active' : ''}`}
-                    onClick={() => setSurfaceArea(s.id)}
-                  >
-                    {s.label}
-                  </button>
-                ))}
-              </div>
-            </div>
+              {/* Indikator Metrik Kuantitatif Terpisah */}
+              <CollisionMetrics
+                collisionCount={simulationState.collisionCount}
+                collisionFrequency={simulationState.collisionFrequency}
+                effectiveCollisionCount={simulationState.effectiveCollisionCount}
+                productCount={simulationState.productCount}
+                reactionRate={simulationState.reactionRate}
+                elapsedTime={simulationState.elapsedTime}
+              />
 
-            {/* 4. Katalis */}
-            <div className={`control-item ${activeExp.factor === 'Katalis' ? 'highlight-control' : ''}`}>
-              <div className="catalyst-toggle-row">
-                <label htmlFor="toggle-catalyst">Gunakan Katalis Reaksi</label>
+              {/* Grafik Real-Time Partikel vs Waktu */}
+              <SimulationChart
+                timeSeries={simulationState.timeSeries}
+                maxDuration={simulationState.maxDuration}
+              />
+
+              {/* Tombol Lanjut ke Tahap Pengamatan */}
+              <div className="stage-next-action-bar">
+                <div className="action-hint">
+                  {simulationState.collisionCount > 0
+                    ? '✓ Data pengamatan telah diperoleh. Lanjutkan ke Lembar Pengamatan untuk mencatat dan menganalisis.'
+                    : 'Jalankan simulasi minimal beberapa detik untuk mengumpulkan data pengamatan.'}
+                </div>
                 <button
-                  id="toggle-catalyst"
-                  className={`toggle-switch ${hasCatalyst ? 'on' : 'off'}`}
-                  onClick={() => setHasCatalyst(!hasCatalyst)}
-                  aria-pressed={hasCatalyst}
+                  className="btn btn-primary btn-proceed-next"
+                  onClick={() => setActiveStage('observation')}
                 >
-                  {hasCatalyst ? 'DENGAN KATALIS' : 'TANPA KATALIS'}
+                  Lanjut ke Lembar Pengamatan Siswa &rarr;
                 </button>
               </div>
-              <span className="control-hint">Katalis menurunkan energi aktivasi reaksi (Ea).</span>
             </div>
           </div>
+        )}
 
-          <div className="panel-actions">
-            <button
-              id="btn-run-simulation"
-              className="btn btn-primary btn-run-sim"
-              onClick={handleRunSimulation}
-              disabled={isSimulating}
-            >
-              {isSimulating ? 'Memproses Simulasi...' : '▶ Jalankan Simulasi Eksperimen'}
-            </button>
+        {/* TAHAP 2: LEMBAR DATA PENGAMATAN SISWA */}
+        {activeStage === 'observation' && (
+          <div className="observation-stage-layout">
+            {savedObservation && !isEditingObservation ? (
+              <ObservationSummary
+                observation={savedObservation}
+                experiment={activeExp}
+                onEdit={() => setIsEditingObservation(true)}
+                onProceedToQuiz={() => setActiveStage('quiz')}
+              />
+            ) : (
+              <ObservationForm
+                experiment={activeExp}
+                metrics={simulationState}
+                parameters={{ concA, concB, temperature, hasCatalyst }}
+                onObservationSaved={handleObservationSaved}
+                initialData={savedObservation}
+              />
+            )}
           </div>
-        </section>
+        )}
 
-        {/* Panel Hasil & Visualisasi */}
-        <section className="lab-results-panel" aria-labelledby="results-title">
-          <div className="results-card">
-            <div className="results-header">
-              <span className="badge badge-cyan">{activeExp.code}</span>
-              <h2 id="results-title" className="results-title">{activeExp.title}</h2>
-              <p className="results-desc">{activeExp.description}</p>
-            </div>
-
-            {/* Variabel Kontrol Ilmiah */}
-            <div className="variables-table-box">
-              <span className="sub-heading">Desain Variabel Eksperimen:</span>
-              <ul className="variables-list">
-                <li><strong>Variabel Bebas:</strong> {activeExp.variables.independent}</li>
-                <li><strong>Variabel Terikat:</strong> {activeExp.variables.dependent}</li>
-                <li><strong>Variabel Terkontrol:</strong> {activeExp.variables.controlled}</li>
-              </ul>
-            </div>
-
-            {/* Indikator Hasil Simulasi */}
-            <div className="sim-output-box">
-              <span className="sub-heading">Data Hasil Simulasi:</span>
-              <div className="metrics-grid">
-                <div className="metric-card">
-                  <span className="metric-val">{simulationResults.estTimeSeconds} s</span>
-                  <span className="metric-lbl">Waktu Selesai Reaksi</span>
-                </div>
-                <div className="metric-card">
-                  <span className="metric-val">{simulationResults.collisionFreq} /detik</span>
-                  <span className="metric-lbl">Frekuensi Tumbukan</span>
-                </div>
-                <div className="metric-card">
-                  <span className="metric-val">{simulationResults.rateScore} x</span>
-                  <span className="metric-lbl">Faktor Relatif Laju</span>
-                </div>
-              </div>
-            </div>
-
-            {/* Kesimpulan Eksperimen */}
-            <div className="scientific-conclusion">
-              <strong>Kesimpulan Ilmiah:</strong>
-              <p>
-                {activeExp.factor === 'Konsentrasi' &&
-                  `Konsentrasi ${concentration} M memperbesar kerapatan partikel zat pereaksi, sehingga frekuensi tumbukan antarpartikel per satuan waktu meningkat dan reaksi selesai lebih cepat.`}
-                {activeExp.factor === 'Suhu' &&
-                  `Pada suhu ${temperature}°C, partikel memiliki energi kinetik lebih tinggi. Jumlah partikel yang mampu melampaui energi aktivasi (Ea) melonjak, meningkatkan fraksi tumbukan efektif.`}
-                {activeExp.factor === 'Luas Permukaan' &&
-                  `Bentuk fisik '${surfaceArea}' menentukan luas bidang sentuh total padatan. Luas bidang yang semakin besar membuka lebih banyak titik tumbukan langsung dengan larutan.`}
-                {activeExp.factor === 'Katalis' &&
-                  (hasCatalyst
-                    ? 'Katalis aktif menyediakan rute mekanisme reaksi alternatif dengan energi aktivasi lebih rendah, melipatgandakan laju tanpa ikut habis terpakai.'
-                    : 'Tanpa katalis, partikel harus melampaui energi aktivasi standar reaksi yang membutuhkan waktu lebih lama.')}
-              </p>
-            </div>
-
-            <div className="results-footer">
-              {isDone && <span className="done-badge">✓ Eksperimen ini telah tercatat dalam progres kamu.</span>}
-              <button className="btn btn-secondary" onClick={() => onNavigate('materi')}>
-                Pelajari Pembahasan Materi &rarr;
-              </button>
-            </div>
+        {/* TAHAP 3: KUIS PEMAHAMAN LABORATORIUM */}
+        {activeStage === 'quiz' && (
+          <div className="quiz-stage-layout">
+            <LaboratoryQuiz
+              experiment={activeExp}
+              onQuizCompleted={handleQuizCompleted}
+            />
           </div>
-        </section>
-      </div>
+        )}
+
+        {/* TAHAP 4: LAPORAN CAPAIAN AKHIR PRAKTIKUM */}
+        {activeStage === 'report' && (
+          <div className="report-stage-layout">
+            <ExperimentSummaryReport
+              experiment={activeExp}
+              metrics={simulationState}
+              observation={savedObservation}
+              quizResult={quizResult}
+              onRestartLab={() => {
+                handleRestart();
+                setActiveStage('simulation');
+              }}
+              onNavigate={onNavigate}
+            />
+          </div>
+        )}
+      </main>
     </div>
   );
 }
