@@ -4,7 +4,7 @@ import './ParticleSimulation.css';
 /**
  * ParticleSimulation.jsx
  * Kanvas Visualisasi Mikroskopik Partikel A, B, dan Produk
- * Sesuai spesifikasi PRD Bab 8.5, Bab 9, & AGENT.md Bab 5 & 10
+ * Sesuai spesifikasi PRD Bab 8.5, Bab 9, Bab 22 & AGENT.md Bab 5, 10, 16
  */
 export default function ParticleSimulation({
   engine,
@@ -25,8 +25,9 @@ export default function ParticleSimulation({
 
     // Hubungkan kanvas langsung ke engine loop
     engine.attachCanvas(canvas);
+    engine.ensureRunningLoop();
 
-    // Resize observer untuk adaptasi layar responsif
+    // Adaptasi layar responsif
     const handleResize = () => {
       if (engine && canvas) {
         engine.drawCanvas();
@@ -49,7 +50,7 @@ export default function ParticleSimulation({
           <span className="status-label">
             {status === 'running' && 'Reaksi Aktif (60 FPS)'}
             {status === 'paused' && 'Simulasi Dijeda'}
-            {status === 'idle' && 'Partikel Bergerak (Siap Direaksikan)'}
+            {status === 'idle' && 'Partikel Bergerak Termal (Siap Direaksikan)'}
             {status === 'completed' && 'Waktu Pengamatan Selesai'}
           </span>
         </div>
@@ -77,7 +78,7 @@ export default function ParticleSimulation({
           <div className="canvas-banner-hint idle-hint">
             <span className="hint-pill">🔬 Gerak Partikel Aktif</span>
             <span className="hint-text">
-              Partikel A dan B sedang bergerak termal. Tekan <strong>▶ Mulai Pengamatan Reaksi</strong> untuk mengaktifkan tumbukan pembentukan produk.
+              Partikel A dan B sedang bergerak termal. Tekan <strong>▶ Mulai Simulasi</strong> untuk mengaktifkan tumbukan pembentukan produk.
             </span>
           </div>
         )}
@@ -86,6 +87,7 @@ export default function ParticleSimulation({
           <div className="canvas-overlay paused-overlay">
             <span className="pause-icon">⏸️</span>
             <p>Simulasi Sedang Dijeda</p>
+            <span className="pause-subtext">Posisi dan seluruh metrik waktu dibekukan sementara.</span>
           </div>
         )}
 
@@ -93,7 +95,7 @@ export default function ParticleSimulation({
           <div className="canvas-overlay completed-overlay">
             <span className="completed-icon">✓</span>
             <p>Waktu Pengamatan Selesai</p>
-            <span className="completed-hint">Seluruh data tercatat. Silakan lengkapi formulir pengamatan di bawah.</span>
+            <span className="completed-hint">Seluruh data kuantitatif tercatat. Silakan lengkapi formulir pengamatan di bawah.</span>
           </div>
         )}
       </div>
@@ -116,6 +118,14 @@ export default function ParticleSimulation({
           <span className="legend-swatch swatch-flash">💥</span>
           <span className="legend-text">Tumbukan Efektif (E ≥ Ea)</span>
         </div>
+      </div>
+
+      {/* Catatan Keterbatasan Model Ilmiah (PRD 8.10, 9.5 & AGENT.md 11) */}
+      <div className="model-simplification-note">
+        <span className="note-icon">💡</span>
+        <span className="note-text">
+          <strong>Penyederhanaan Model:</strong> Simulasi ini memodelkan reaksi konseptual <code>A + B → AB</code> untuk mempelajari Teori Tumbukan. Kepadatan partikel mewakili konsentrasi zat pada volume tetap; kecepatan gerak mewakili energi kinetik rata-rata akibat suhu mutlak. Orientasi molekuler disederhanakan.
+        </span>
       </div>
     </div>
   );

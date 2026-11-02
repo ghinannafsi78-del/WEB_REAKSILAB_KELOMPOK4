@@ -13,6 +13,8 @@ export default function ObservationForm({
   parameters,
   onObservationSaved,
   initialData = null,
+  trialNumber = 1,
+  onCancel = null,
 }) {
   const [formData, setFormData] = useState(() => ({
     concA: initialData?.observedParameters?.concA ?? parameters.concA,
@@ -29,6 +31,7 @@ export default function ObservationForm({
     analysis: initialData?.studentInterpretation?.analysis ?? '',
     conclusion: initialData?.studentInterpretation?.conclusion ?? '',
     id: initialData?.id,
+    trialNumber: initialData?.trialNumber ?? trialNumber,
   }));
 
   const [errors, setErrors] = useState({});
@@ -67,6 +70,7 @@ export default function ObservationForm({
     const submissionPayload = {
       ...formData,
       experimentId: experiment.id,
+      trialNumber: formData.trialNumber || trialNumber,
     };
 
     const validation = validateObservationData(submissionPayload);
@@ -93,28 +97,33 @@ export default function ObservationForm({
     <section className="observation-form-card" aria-labelledby="obs-form-title">
       <div className="form-card-header">
         <div>
-          <span className="badge badge-cyan">LEMBAR KERJA SISWA</span>
+          <div className="badge-row">
+            <span className="badge badge-cyan">LEMBAR KERJA SISWA</span>
+            <span className="badge badge-amber">Percobaan #{formData.trialNumber || trialNumber}</span>
+          </div>
           <h3 id="obs-form-title" className="form-main-heading">
-            Formulir Data Pengamatan & Analisis Eksperimen
+            Formulir Data Pengamatan & Analisis Mandiri
           </h3>
           <p className="form-subtitle">
-            Catat hasil simulasi yang telah kamu jalankan, lalu susun interpretasi dan kesimpulan ilmiah berdasarkan data.
+            Catat hasil simulasi yang telah kamu jalankan, lalu susun interpretasi dan kesimpulan ilmiah berdasarkan data bukti.
           </p>
         </div>
-        <button
-          type="button"
-          className="btn-sync-metrics"
-          onClick={handleCopyCurrentMetrics}
-          title="Salin pembacaan metrik simulasi terbaru ke formulir"
-        >
-          🔄 Salin Data Simulasi Terkini
-        </button>
+        <div className="form-header-actions">
+          <button
+            type="button"
+            className="btn-sync-metrics"
+            onClick={handleCopyCurrentMetrics}
+            title="Salin pembacaan metrik simulasi terbaru ke formulir"
+          >
+            🔄 Salin Data Simulasi Terkini
+          </button>
+        </div>
       </div>
 
       <form onSubmit={handleSubmit} className="observation-form-content">
         {/* 1. Bagian Parameter & Identitas Eksperimen */}
         <fieldset className="form-fieldset">
-          <legend className="fieldset-legend">1. Identitas & Parameter Eksperimen</legend>
+          <legend className="fieldset-legend">1. Kondisi Parameter Percobaan #{formData.trialNumber || trialNumber}</legend>
           <div className="params-snapshot-grid">
             <div className="param-cell">
               <span className="cell-label">Faktor yang Diuji</span>
@@ -145,7 +154,7 @@ export default function ObservationForm({
 
         {/* 2. Bagian Data Kuantitatif Tercatat */}
         <fieldset className="form-fieldset">
-          <legend className="fieldset-legend">2. Data Kuantitatif Hasil Simulasi (Tercatat)</legend>
+          <legend className="fieldset-legend">2. Data Kuantitatif Hasil Model Simulasi (Tercatat)</legend>
           <div className="quant-inputs-grid">
             <div className="input-field">
               <label htmlFor="field-collision-count">Jumlah Tumbukan A-B (Total)</label>
@@ -173,7 +182,7 @@ export default function ObservationForm({
             </div>
 
             <div className="input-field">
-              <label htmlFor="field-eff-collision">Tumbukan Efektif (Reaktif)</label>
+              <label htmlFor="field-eff-collision">Tumbukan Efektif (E ≥ Ea)</label>
               <input
                 id="field-eff-collision"
                 type="number"
@@ -223,7 +232,7 @@ export default function ObservationForm({
             <textarea
               id="field-notes"
               rows={3}
-              placeholder="Tuliskan deskripsi visual yang kamu amati pada area simulasi partikel..."
+              placeholder="Tuliskan deskripsi visual mikroskopik yang kamu amati pada area simulasi..."
               value={formData.observationNotes}
               onChange={(e) => handleChange('observationNotes', e.target.value)}
               required
@@ -251,10 +260,10 @@ export default function ObservationForm({
 
           <div className="textarea-field">
             <label htmlFor="field-conclusion">
-              c. Kesimpulan Percobaan <span className="req-star">*</span>
+              c. Kesimpulan Percobaan Berdasarkan Data <span className="req-star">*</span>
             </label>
             <span className="field-hint">
-              Tarik kesimpulan ilmiah berdasarkan bukti data yang tercatat dalam pengamatan ini.
+              Tarik kesimpulan ilmiah berdasarkan bukti data kuantitatif yang tercatat dalam pengamatan ini.
             </span>
             <textarea
               id="field-conclusion"
@@ -273,14 +282,19 @@ export default function ObservationForm({
           <div className="save-success-alert" role="alert">
             <span className="success-icon">✓</span>
             <div>
-              <strong>Data Pengamatan Berhasil Disimpan!</strong>
-              <p>Data tersimpan di penyimpanan perangkat kamu. Kamu sekarang dapat melanjutkan ke kuis interaktif.</p>
+              <strong>Data Pengamatan Percobaan #{formData.trialNumber || trialNumber} Berhasil Disimpan!</strong>
+              <p>Data tersimpan di penyimpanan perangkat kamu. Kamu sekarang dapat melihat ringkasan atau melanjutkan ke kuis interaktif.</p>
             </div>
           </div>
         )}
 
-        {/* Action Button */}
+        {/* Action Buttons */}
         <div className="form-submit-row">
+          {onCancel && (
+            <button type="button" className="btn btn-secondary" onClick={onCancel}>
+              Batal
+            </button>
+          )}
           <button type="submit" className="btn btn-primary btn-save-obs">
             💾 Simpan Data Pengamatan ke LocalStorage
           </button>

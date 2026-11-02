@@ -19,7 +19,7 @@ import './LaboratoryPage.css';
 /**
  * LaboratoryPage.jsx
  * Laboratorium Virtual Interaktif Materi Laju Reaksi (Model Konseptual A + B -> Produk)
- * Sesuai spesifikasi PRD Bab 8, Bab 9, & AGENT.md Bab 5, 6, 7, 8
+ * Sesuai spesifikasi PRD Bab 8, Bab 9, Bab 22 & AGENT.md Bab 5, 6, 7, 8, 16
  */
 export default function LaboratoryPage({
   onNavigate,
@@ -78,12 +78,16 @@ export default function LaboratoryPage({
     });
   });
 
-  // 5. State Data Pengamatan Siswa & Kuis
+  // 5. State Data Pengamatan Siswa (Mendukung Multi-Trial & Komparasi)
+  const [allObservations, setAllObservations] = useState(() => {
+    return getObservationsByExperiment(activeExp.id);
+  });
   const [savedObservation, setSavedObservation] = useState(() => {
     const existing = getObservationsByExperiment(activeExp.id);
     return existing.length > 0 ? existing[0] : null;
   });
   const [isEditingObservation, setIsEditingObservation] = useState(false);
+  const [editingTrialData, setEditingTrialData] = useState(null);
   const [quizResult, setQuizResult] = useState(null);
 
   // Pasang listener onMetricsUpdate dan cleanup saat unmount
@@ -91,6 +95,9 @@ export default function LaboratoryPage({
     engine.setOnMetricsUpdate((metrics) => {
       setSimulationState(metrics);
     });
+
+    // Pastikan loop animasi berjalan (idempoten & tahan StrictMode)
+    engine.ensureRunningLoop();
 
     return () => {
       engine.destroy();
@@ -107,8 +114,10 @@ export default function LaboratoryPage({
     setHasCatalyst(exp.defaultParameters.hasCatalyst);
 
     const existingObs = getObservationsByExperiment(exp.id);
+    setAllObservations(existingObs);
     setSavedObservation(existingObs.length > 0 ? existingObs[0] : null);
     setIsEditingObservation(false);
+    setEditingTrialData(null);
     setQuizResult(null);
 
     engine.resetToDefaults(exp.defaultParameters);
@@ -163,9 +172,30 @@ export default function LaboratoryPage({
 
   // Callback saat pengamatan disimpan
   const handleObservationSaved = (obs) => {
+    const updated = getObservationsByExperiment(activeExp.id);
+    setAllObservations(updated);
     setSavedObservation(obs);
     setIsEditingObservation(false);
+    setEditingTrialData(null);
     markObservationCompleted(activeExp.id);
+  };
+
+  // Handler untuk menambah percobaan baru (Multi-Trial)
+  const handleAddNewTrial = () => {
+    setEditingTrialData(null);
+    setIsEditingObservation(true);
+  };
+
+  // Handler untuk mengedit isian percobaan
+  const handleEditTrial = (obsToEdit) => {
+    setEditingTrialData(obsToEdit);
+    setIsEditingObservation(true);
+  };
+
+  // Handler batal edit
+  const handleCancelEdit = () => {
+    setIsEditingObservation(false);
+    setEditingTrialData(null);
   };
 
   // Callback saat kuis laboratorium selesai
@@ -231,11 +261,13 @@ export default function LaboratoryPage({
         <span className="step-arrow">&rarr;</span>
 
         <button
-          className={`step-btn ${activeStage === 'observation' ? 'active' : ''} ${savedObservation ? 'has-data' : ''}`}
+          className={`step-btn ${activeStage === 'observation' ? 'active' : ''} ${allObservations.length > 0 ? 'has-data' : ''}`}
           onClick={() => setActiveStage('observation')}
         >
           <span className="step-num">2</span>
-          <span className="step-title">Lembar Pengamatan {savedObservation ? '✓' : ''}</span>
+          <span className="step-title">
+            Lembar Pengamatan {allObservations.length > 0 ? `(${allObservations.length}) ✓` : ''}
+          </span>
         </button>
 
         <span className="step-arrow">&rarr;</span>
@@ -336,11 +368,14 @@ export default function LaboratoryPage({
         {/* TAHAP 2: LEMBAR DATA PENGAMATAN SISWA */}
         {activeStage === 'observation' && (
           <div className="observation-stage-layout">
-            {savedObservation && !isEditingObservation ? (
+            {allObservations.length > 0 && !isEditingObservation ? (
               <ObservationSummary
-                observation={savedObservation}
+                observation={savedObservation || allObservations[0]}
+                allObservations={allObservations}
                 experiment={activeExp}
-                onEdit={() => setIsEditingObservation(true)}
+                onEdit={handleEditTrial}
+                onAddNewTrial={handleAddNewTrial}
+                onSelectTrial={(obs) => setSavedObservation(obs)}
                 onProceedToQuiz={() => setActiveStage('quiz')}
               />
             ) : (
@@ -349,7 +384,9 @@ export default function LaboratoryPage({
                 metrics={simulationState}
                 parameters={{ concA, concB, temperature, hasCatalyst }}
                 onObservationSaved={handleObservationSaved}
-                initialData={savedObservation}
+                initialData={editingTrialData}
+                trialNumber={editingTrialData ? editingTrialData.trialNumber : allObservations.length + 1}
+                onCancel={allObservations.length > 0 ? handleCancelEdit : null}
               />
             )}
           </div>
@@ -359,6 +396,7 @@ export default function LaboratoryPage({
         {activeStage === 'quiz' && (
           <div className="quiz-stage-layout">
             <LaboratoryQuiz
+              key={activeExp.id}
               experiment={activeExp}
               onQuizCompleted={handleQuizCompleted}
             />
@@ -371,7 +409,7 @@ export default function LaboratoryPage({
             <ExperimentSummaryReport
               experiment={activeExp}
               metrics={simulationState}
-              observation={savedObservation}
+              observation={savedObservation || allObservations[0]}
               quizResult={quizResult}
               onRestartLab={() => {
                 handleRestart();

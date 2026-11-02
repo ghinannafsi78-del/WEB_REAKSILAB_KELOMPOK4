@@ -34,8 +34,9 @@
 .chart-legend-badge {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 8px;
   font-size: 0.78rem;
+  flex-wrap: wrap;
 }
 
 .legend-chip {
@@ -55,8 +56,12 @@
   border-radius: 2px;
 }
 
-.line-reactant {
-  background: #38bdf8;
+.line-a {
+  background: #00e5ff;
+}
+
+.line-b {
+  background: #ff9100;
 }
 
 .line-product {
@@ -93,10 +98,32 @@
   letter-spacing: 0.02em;
 }
 
-.line-reactants-path {
-  filter: drop-shadow(0 0 4px rgba(56, 189, 248, 0.4));
+.line-a-path {
+  filter: drop-shadow(0 0 4px rgba(0, 229, 255, 0.45));
+}
+
+.line-b-path {
+  filter: drop-shadow(0 0 4px rgba(255, 145, 0, 0.45));
 }
 
 .line-products-path {
-  filter: drop-shadow(0 0 4px rgba(16, 185, 129, 0.5));
+  filter: drop-shadow(0 0 5px rgba(16, 185, 129, 0.55));
+}
+
+.chart-accessibility-note {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.75rem;
+  color: var(--text-muted, #64748b);
+  border-top: 1px solid rgba(255, 255, 255, 0.04);
+  padding-top: 8px;
+}
+
+.note-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #38bdf8;
+  flex-shrink: 0;
 }

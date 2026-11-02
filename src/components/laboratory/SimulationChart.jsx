@@ -2,19 +2,20 @@ import './SimulationChart.css';
 
 /**
  * SimulationChart.jsx
- * Grafik Real-Time Kurva Perubahan Reaktan dan Produk terhadap Waktu
- * Sesuai spesifikasi PRD Bab 8.7, 9.3, & AGENT.md Bab 5.6
+ * Grafik Real-Time Kurva Perubahan Reaktan [A], [B], dan Produk [AB] terhadap Waktu
+ * Sesuai spesifikasi PRD Bab 8.7, 9.3 & AGENT.md Bab 5.6
  */
 export default function SimulationChart({
   timeSeries = [],
   maxDuration = 30,
 }) {
   // Jika belum ada data series
-  const data = timeSeries && timeSeries.length > 0
-    ? timeSeries
-    : [{ time: 0, countA: 0, countB: 0, productCount: 0, rate: 0 }];
+  const data =
+    timeSeries && timeSeries.length > 0
+      ? timeSeries
+      : [{ time: 0, countA: 0, countB: 0, productCount: 0, rate: 0 }];
 
-  // Dimensi visual SVG
+  // Dimensi visual SVG responsif
   const svgWidth = 560;
   const svgHeight = 220;
   const padding = { top: 20, right: 30, bottom: 35, left: 45 };
@@ -24,28 +25,34 @@ export default function SimulationChart({
   // Nilai maksimum untuk skala sumbu Y (partikel)
   const maxParticles = Math.max(
     10,
-    ...data.map((d) => Math.max(d.countA + d.countB, d.productCount, 15))
+    ...data.map((d) => Math.max(d.countA || 0, d.countB || 0, d.productCount || 0, 15))
   );
 
   // Waktu maksimum pada sumbu X
-  const maxX = Math.max(maxDuration, ...data.map((d) => d.time), 10);
+  const maxX = Math.max(maxDuration, ...data.map((d) => d.time || 0), 10);
 
   // Koordinat pemetaan fungsi
   const getX = (t) => padding.left + (t / maxX) * plotWidth;
   const getY = (val) => padding.top + plotHeight - (val / maxParticles) * plotHeight;
 
-  // Buat path string untuk garis Reaktan Total (A + B)
-  const reactantPath = data.reduce((acc, pt, idx) => {
-    const totalReactants = pt.countA + pt.countB;
-    const x = getX(pt.time);
-    const y = getY(totalReactants);
+  // Path string untuk Partikel A (Cyan)
+  const pathA = data.reduce((acc, pt, idx) => {
+    const x = getX(pt.time || 0);
+    const y = getY(pt.countA || 0);
     return `${acc} ${idx === 0 ? 'M' : 'L'} ${x.toFixed(1)} ${y.toFixed(1)}`;
   }, '');
 
-  // Buat path string untuk garis Produk (P)
-  const productPath = data.reduce((acc, pt, idx) => {
-    const x = getX(pt.time);
-    const y = getY(pt.productCount);
+  // Path string untuk Partikel B (Amber)
+  const pathB = data.reduce((acc, pt, idx) => {
+    const x = getX(pt.time || 0);
+    const y = getY(pt.countB || 0);
+    return `${acc} ${idx === 0 ? 'M' : 'L'} ${x.toFixed(1)} ${y.toFixed(1)}`;
+  }, '');
+
+  // Path string untuk Partikel Produk [AB] (Emerald)
+  const pathProduct = data.reduce((acc, pt, idx) => {
+    const x = getX(pt.time || 0);
+    const y = getY(pt.productCount || 0);
     return `${acc} ${idx === 0 ? 'M' : 'L'} ${x.toFixed(1)} ${y.toFixed(1)}`;
   }, '');
 
@@ -71,17 +78,21 @@ export default function SimulationChart({
         <div className="chart-title-group">
           <h4 className="chart-main-title">Grafik Kinetika Reaksi Model: Partikel vs Waktu</h4>
           <span className="chart-subtitle">
-            Memetakan laju berkurangnya reaktan [A + B] dan bertambahnya produk [AB]
+            Memetakan laju berkurangnya reaktan [A], [B] dan pembentukan produk [AB] secara real-time
           </span>
         </div>
         <div className="chart-legend-badge">
-          <div className="legend-chip legend-reactant">
-            <span className="legend-line line-reactant" />
-            <span>Reaktan (A + B): <strong>{(latest.countA || 0) + (latest.countB || 0)}</strong></span>
+          <div className="legend-chip legend-a">
+            <span className="legend-line line-a" />
+            <span>[A]: <strong>{latest.countA || 0}</strong></span>
+          </div>
+          <div className="legend-chip legend-b">
+            <span className="legend-line line-b" />
+            <span>[B]: <strong>{latest.countB || 0}</strong></span>
           </div>
           <div className="legend-chip legend-product">
             <span className="legend-line line-product" />
-            <span>Produk (AB): <strong>{latest.productCount || 0}</strong></span>
+            <span>[AB]: <strong>{latest.productCount || 0}</strong></span>
           </div>
         </div>
       </div>
@@ -177,26 +188,39 @@ export default function SimulationChart({
             Waktu Simulasi (detik)
           </text>
 
-          {/* Garis Kurva Reaktan (Cyan/Amber) */}
-          {reactantPath && (
+          {/* Kurva Reaktan A (Cyan) */}
+          {pathA && (
             <path
-              d={reactantPath}
+              d={pathA}
               fill="none"
-              stroke="#38bdf8"
-              strokeWidth="2.5"
+              stroke="#00e5ff"
+              strokeWidth="2.2"
               strokeLinecap="round"
               strokeLinejoin="round"
-              className="line-reactants-path"
+              className="line-a-path"
             />
           )}
 
-          {/* Garis Kurva Produk (Emerald) */}
-          {productPath && (
+          {/* Kurva Reaktan B (Amber) */}
+          {pathB && (
             <path
-              d={productPath}
+              d={pathB}
+              fill="none"
+              stroke="#ff9100"
+              strokeWidth="2.2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              className="line-b-path"
+            />
+          )}
+
+          {/* Kurva Produk AB (Emerald) */}
+          {pathProduct && (
+            <path
+              d={pathProduct}
               fill="none"
               stroke="#10b981"
-              strokeWidth="2.5"
+              strokeWidth="2.6"
               strokeLinecap="round"
               strokeLinejoin="round"
               className="line-products-path"
@@ -207,15 +231,23 @@ export default function SimulationChart({
           {latest && (
             <>
               <circle
-                cx={getX(latest.time)}
-                cy={getY((latest.countA || 0) + (latest.countB || 0))}
-                r="4.5"
-                fill="#38bdf8"
+                cx={getX(latest.time || 0)}
+                cy={getY(latest.countA || 0)}
+                r="4"
+                fill="#00e5ff"
                 stroke="#fff"
                 strokeWidth="1.5"
               />
               <circle
-                cx={getX(latest.time)}
+                cx={getX(latest.time || 0)}
+                cy={getY(latest.countB || 0)}
+                r="4"
+                fill="#ff9100"
+                stroke="#fff"
+                strokeWidth="1.5"
+              />
+              <circle
+                cx={getX(latest.time || 0)}
                 cy={getY(latest.productCount || 0)}
                 r="4.5"
                 fill="#10b981"
@@ -225,6 +257,13 @@ export default function SimulationChart({
             </>
           )}
         </svg>
+      </div>
+
+      <div className="chart-accessibility-note">
+        <span className="note-dot" />
+        <span className="note-desc">
+          Kurva menunjukkan penurunan partikel reaktan [A] & [B] seiring waktu yang dikonversi menjadi partikel produk [AB] melalui tumbukan efektif.
+        </span>
       </div>
     </div>
   );

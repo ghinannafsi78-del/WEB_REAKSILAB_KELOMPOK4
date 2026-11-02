@@ -1,12 +1,15 @@
 /**
  * services/simulationService.js
  * Mesin Simulasi Mikroskopik Reaksi Kimia Konseptual A + B -> Produk
- * Sesuai spesifikasi PRD Bab 8, Bab 9, & AGENT.md Bab 5 & 11
+ * Sesuai spesifikasi PRD Bab 8, Bab 9, Bab 22 & AGENT.md Bab 5, 11, 16
  *
  * Mengelola partikel A, partikel B, dan partikel Produk dalam koordinat 2D:
  * - Partikel langsung bergerak thermal (Brownian) sejak awal pada suhu T.
- * - Kecepatan partikel proporsional terhadap akar kuadrat suhu (T).
+ * - Kecepatan partikel proporsional terhadap akar kuadrat suhu mutlak (T dalam Kelvin).
  * - Saat reaksi dimulai ('running'), tumbukan A-B dievaluasi untuk membentuk produk.
+ * - Dilengkapi status kontak (touching pairs debounce) untuk mencegah hitung ganda tumbukan.
+ * - Jeda (pause) benar-benar membatalkan requestAnimationFrame dan membekukan posisi & metrik.
+ * - Konsentrasi A dan B dapat diubah secara independen tanpa memengaruhi partikel jenis lain.
  * - Rendering langsung ke kanvas 60 FPS untuk performa maksimal.
  * - Emisi data metrik di-throttle agar rendering React tetap ringan dan responsif.
  */
@@ -35,11 +38,13 @@ export class SimulationEngine {
     // State partikel & efek visual
     this.particles = [];
     this.collisionFlashes = [];
+    // Set pasangan partikel yang sedang bersentuhan untuk mencegah hitung ganda (debounce kontak)
+    this.activeTouchingPairs = new Set();
 
     // State simulasi:
     // 'idle' = partikel bergerak termal, reaksi belum dimulai (timer & hitungan = 0)
     // 'running' = reaksi aktif, deteksi tumbukan bereaksi, timer berjalan
-    // 'paused' = seluruh gerak dibekukan sementara
+    // 'paused' = seluruh gerak dibekukan sementara (frame dibatalkan)
     // 'completed' = waktu pengamatan selesai
     this.status = 'idle';
     this.elapsedTime = 0; // dalam detik
@@ -94,6 +99,7 @@ export class SimulationEngine {
   initParticles() {
     this.particles = [];
     this.collisionFlashes = [];
+    this.activeTouchingPairs.clear();
     this.collisionCount = 0;
     this.effectiveCollisionCount = 0;
     this.productCount = 0;
@@ -112,7 +118,7 @@ export class SimulationEngine {
     for (let i = 0; i < countA; i++) {
       const angle = Math.random() * Math.PI * 2;
       this.particles.push({
-        id: `A-${i}-${Date.now()}-${Math.random()}`,
+        id: `A-${i}-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
         type: 'A',
         x: padding + Math.random() * (this.width - padding * 2),
         y: padding + Math.random() * (this.height - padding * 2),
@@ -128,7 +134,7 @@ export class SimulationEngine {
     for (let i = 0; i < countB; i++) {
       const angle = Math.random() * Math.PI * 2;
       this.particles.push({
-        id: `B-${i}-${Date.now()}-${Math.random()}`,
+        id: `B-${i}-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
         type: 'B',
         x: padding + Math.random() * (this.width - padding * 2),
         y: padding + Math.random() * (this.height - padding * 2),
@@ -145,32 +151,80 @@ export class SimulationEngine {
 
   /**
    * Menghitung magnitudo kecepatan partikel berdasarkan suhu (°C)
+   * Menggunakan prinsip fisika Maxwell-Boltzmann: v ~ sqrt(T_Kelvin)
    * Suhu 10°C: ~1.4 px/frame, Suhu 80°C: ~3.4 px/frame
    */
   calculateParticleSpeed(tempC) {
     const tKelvin = tempC + 273.15;
-    const tRefKelvin = 298.15;
+    const tRefKelvin = 298.15; // Suhu acuan 25°C
     const baseSpeed = 2.2;
     return baseSpeed * Math.sqrt(tKelvin / tRefKelvin);
   }
 
   /**
-   * Memperbarui parameter eksperimen
+   * Rekonsiliasi populasi satu jenis partikel (A atau B) secara independen
+   * Mencegah perubahan partikel jenis lain saat konsentrasi salah satu diubah
+   */
+  reconcileParticles(type, targetConc) {
+    const targetCount = Math.max(3, Math.min(32, Math.round(targetConc * 15)));
+    const currentOfType = this.particles.filter((p) => p.type === type);
+    const diff = targetCount - currentOfType.length;
+
+    if (diff > 0) {
+      // Tambahkan partikel baru tanpa mereset partikel yang sedang ada
+      const speed = this.calculateParticleSpeed(this.temperature);
+      const radius = 8;
+      const padding = 20;
+      const color = type === 'A' ? '#00e5ff' : '#ff9100';
+
+      for (let i = 0; i < diff; i++) {
+        const angle = Math.random() * Math.PI * 2;
+        this.particles.push({
+          id: `${type}-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
+          type: type,
+          x: padding + Math.random() * (this.width - padding * 2),
+          y: padding + Math.random() * (this.height - padding * 2),
+          vx: Math.cos(angle) * speed,
+          vy: Math.sin(angle) * speed,
+          radius: radius,
+          mass: 1,
+          color: color,
+        });
+      }
+    } else if (diff < 0) {
+      // Hapus partikel berlebih tipe tersebut secara aman dari belakang
+      const toRemoveCount = Math.abs(diff);
+      let removed = 0;
+      this.particles = this.particles.filter((p) => {
+        if (p.type === type && removed < toRemoveCount) {
+          removed++;
+          return false;
+        }
+        return true;
+      });
+    }
+
+    this.drawCanvas();
+  }
+
+  /**
+   * Memperbarui parameter eksperimen secara reaktif dan aman
    */
   updateParameters(params = {}) {
-    let reInitNeeded = false;
+    let concAChanged = false;
+    let concBChanged = false;
 
     if (params.concA !== undefined && params.concA !== this.concA) {
       this.concA = params.concA;
-      reInitNeeded = true;
+      concAChanged = true;
     }
     if (params.concB !== undefined && params.concB !== this.concB) {
       this.concB = params.concB;
-      reInitNeeded = true;
+      concBChanged = true;
     }
     if (params.temperature !== undefined) {
       this.temperature = params.temperature;
-      // Perbarui kelajuan seluruh partikel aktif saat suhu diubah
+      // Perbarui kelajuan seluruh partikel aktif secara langsung dan mulus
       const newSpeed = this.calculateParticleSpeed(this.temperature);
       this.particles.forEach((p) => {
         const curMag = Math.hypot(p.vx, p.vy) || 1;
@@ -182,22 +236,36 @@ export class SimulationEngine {
       this.hasCatalyst = params.hasCatalyst;
     }
 
-    // Jika konsentrasi diubah saat idle atau completed, perbarui jumlah partikel
-    if (reInitNeeded && (this.status === 'idle' || this.status === 'completed')) {
-      this.initParticles();
+    // Jika konsentrasi diubah saat idle atau completed, rekonsiliasi independen
+    if (this.status === 'idle' || this.status === 'completed') {
+      if (concAChanged) {
+        this.reconcileParticles('A', this.concA);
+      }
+      if (concBChanged) {
+        this.reconcileParticles('B', this.concB);
+      }
     }
 
     this.emitMetrics(true);
   }
 
   /**
-   * Mulai loop animasi permanen
+   * Mulai loop animasi utama (idempoten - tidak akan membuat loop ganda)
    */
   startLoop() {
     if (this.animationFrameId) return;
     this.lastTimestamp = performance.now();
     this.tick = this.tick.bind(this);
     this.animationFrameId = safeRequestAnimationFrame(this.tick);
+  }
+
+  /**
+   * Memastikan loop berjalan (misal setelah unmount/remount di React StrictMode)
+   */
+  ensureRunningLoop() {
+    if (this.status !== 'paused' && !this.animationFrameId) {
+      this.startLoop();
+    }
   }
 
   /**
@@ -209,25 +277,34 @@ export class SimulationEngine {
     }
     this.status = 'running';
     this.lastTimestamp = performance.now();
+    this.startLoop();
     this.emitMetrics(true);
   }
 
   /**
    * Menjeda reaksi dan gerak partikel
+   * Sesuai AGENT.md 16.3: Membatalkan frame yang terjadwal & membekukan seluruh metrik waktu
    */
   pause() {
     if (this.status !== 'running') return;
     this.status = 'paused';
+    if (this.animationFrameId) {
+      safeCancelAnimationFrame(this.animationFrameId);
+      this.animationFrameId = null;
+    }
+    // Gambar satu frame untuk memperlihatkan overlay jeda
+    this.drawCanvas();
     this.emitMetrics(true);
   }
 
   /**
-   * Melanjutkan reaksi dari jeda
+   * Melanjutkan reaksi dari jeda tanpa membuat loop ganda atau reset data
    */
   resume() {
     if (this.status !== 'paused') return;
     this.status = 'running';
     this.lastTimestamp = performance.now();
+    this.startLoop();
     this.emitMetrics(true);
   }
 
@@ -238,6 +315,7 @@ export class SimulationEngine {
     this.initParticles();
     this.status = 'running';
     this.lastTimestamp = performance.now();
+    this.startLoop();
     this.emitMetrics(true);
   }
 
@@ -247,11 +325,12 @@ export class SimulationEngine {
   stopReaction() {
     this.status = 'idle';
     this.initParticles();
+    this.startLoop();
     this.emitMetrics(true);
   }
 
   /**
-   * Reset seluruh variabel ke nilai default
+   * Reset seluruh variabel ke nilai default acuan
    */
   resetToDefaults(defaultParams = {}) {
     this.concA = defaultParams.concA ?? 1.0;
@@ -260,48 +339,53 @@ export class SimulationEngine {
     this.hasCatalyst = defaultParams.hasCatalyst ?? false;
     this.status = 'idle';
     this.initParticles();
+    this.startLoop();
     this.emitMetrics(true);
   }
 
   /**
-   * Loop animasi utama 60 FPS
+   * Loop animasi utama 60 FPS dengan delta-time terkontrol
    */
   tick(timestamp) {
+    // Jika sedang dijeda, hentikan penjadwalan frame berikutnya
+    if (this.status === 'paused') {
+      this.animationFrameId = null;
+      return;
+    }
+
     const curTime = timestamp || performance.now();
     const rawDelta = curTime - (this.lastTimestamp || curTime);
+    // Batasi delta maksimum 60ms untuk mencegah lompatan posisi setelah tab background
     const deltaMs = Math.max(0, Math.min(60, rawDelta));
     this.lastTimestamp = curTime;
     const dt = deltaMs / 1000;
 
-    // Gerak partikel berjalan selama tidak 'paused'
-    if (this.status !== 'paused') {
-      const isReacting = this.status === 'running';
+    const isReacting = this.status === 'running';
 
-      if (isReacting) {
-        this.elapsedTime += dt;
+    if (isReacting) {
+      this.elapsedTime += dt;
+    }
+
+    this.updatePhysics(dt, isReacting);
+    this.updateFlashes(dt);
+
+    if (isReacting) {
+      // Ambil sampel data grafik tiap 0.5s
+      if (this.elapsedTime - this.lastSampleTime >= 0.5) {
+        this.recordTimeSeriesSample();
+        this.lastSampleTime = this.elapsedTime;
       }
 
-      this.updatePhysics(dt, isReacting);
-      this.updateFlashes(dt);
+      // Cek batas durasi atau kehabisan reaktan
+      const remainingA = this.particles.filter((p) => p.type === 'A').length;
+      const remainingB = this.particles.filter((p) => p.type === 'B').length;
 
-      if (isReacting) {
-        // Ambil sampel data grafik tiap 0.5s
-        if (this.elapsedTime - this.lastSampleTime >= 0.5) {
-          this.recordTimeSeriesSample();
-          this.lastSampleTime = this.elapsedTime;
-        }
-
-        // Cek batas durasi atau kehabisan reaktan
-        const remainingA = this.particles.filter((p) => p.type === 'A').length;
-        const remainingB = this.particles.filter((p) => p.type === 'B').length;
-
-        if (this.elapsedTime >= this.maxDuration || (remainingA === 0 && remainingB === 0)) {
-          this.status = 'completed';
-          this.recordTimeSeriesSample();
-          this.emitMetrics(true);
-          if (this.onComplete) {
-            this.onComplete(this.getMetrics());
-          }
+      if (this.elapsedTime >= this.maxDuration || (remainingA === 0 && remainingB === 0)) {
+        this.status = 'completed';
+        this.recordTimeSeriesSample();
+        this.emitMetrics(true);
+        if (this.onComplete) {
+          this.onComplete(this.getMetrics());
         }
       }
     }
@@ -316,17 +400,22 @@ export class SimulationEngine {
       this.lastMetricsEmitTime = now;
     }
 
-    this.animationFrameId = safeRequestAnimationFrame(this.tick);
+    // Jadwalkan frame berikutnya hanya jika tidak dijeda
+    if (this.status !== 'paused') {
+      this.animationFrameId = safeRequestAnimationFrame(this.tick);
+    } else {
+      this.animationFrameId = null;
+    }
   }
 
   /**
-   * Fisika gerak partikel, pantulan dinding, dan tumbukan
+   * Fisika gerak partikel, pantulan dinding, dan tumbukan dengan pencegahan hitung ganda
    */
   updatePhysics(dt, isReacting) {
     const particles = this.particles;
     const num = particles.length;
 
-    // 1. Integrasi posisi dan pantulan dinding
+    // 1. Integrasi posisi dan pantulan lenting dinding wadah
     for (let i = 0; i < num; i++) {
       const p = particles[i];
       p.x += p.vx * dt * 60;
@@ -349,9 +438,10 @@ export class SimulationEngine {
       }
     }
 
-    // 2. Deteksi tumbukan antar partikel
+    // 2. Deteksi tumbukan antar partikel dengan debounce kontak (anti-double count)
     const newProducts = [];
     const particlesToRemove = new Set();
+    const currentFrameTouchingPairs = new Set();
 
     for (let i = 0; i < num; i++) {
       const p1 = particles[i];
@@ -367,6 +457,13 @@ export class SimulationEngine {
         const minDist = p1.radius + p2.radius;
 
         if (dist < minDist && dist > 0) {
+          // Buat key pasangan unik kanonikal
+          const pairKey = p1.id < p2.id ? `${p1.id}:${p2.id}` : `${p2.id}:${p1.id}`;
+          currentFrameTouchingPairs.add(pairKey);
+
+          // Cek apakah ini tumbukan baru atau masih kontak bersambung dari frame lalu
+          const isNewCollision = !this.activeTouchingPairs.has(pairKey);
+
           // Pisahkan posisi agar tidak overlapping
           const overlap = (minDist - dist) / 2;
           const nx = dx / dist;
@@ -377,7 +474,7 @@ export class SimulationEngine {
           p2.x += nx * overlap;
           p2.y += ny * overlap;
 
-          // Pantulan lenting momentum 2D
+          // Pantulan lenting momentum 2D elastis
           const kx = p1.vx - p2.vx;
           const ky = p1.vy - p2.vy;
           const p = (2 * (nx * kx + ny * ky)) / (p1.mass + p2.mass);
@@ -393,68 +490,77 @@ export class SimulationEngine {
 
           if (isAB) {
             if (isReacting) {
-              this.collisionCount++;
+              // HANYA hitung satu kali per peristiwa kontak fisik awal
+              if (isNewCollision) {
+                this.collisionCount++;
 
-              const isEffective = this.checkEffectiveCollision();
+                const isEffective = this.checkEffectiveCollision();
 
-              if (isEffective) {
-                this.effectiveCollisionCount++;
-                this.productCount++;
+                if (isEffective) {
+                  this.effectiveCollisionCount++;
+                  this.productCount++;
 
-                // Efek visual kilatan tumbukan efektif
-                this.collisionFlashes.push({
-                  x: (p1.x + p2.x) / 2,
-                  y: (p1.y + p2.y) / 2,
-                  radius: 20,
-                  life: 1.0,
-                  color: '#00e676',
-                });
+                  // Efek visual kilatan tumbukan efektif berpendar hijau
+                  this.collisionFlashes.push({
+                    x: (p1.x + p2.x) / 2,
+                    y: (p1.y + p2.y) / 2,
+                    radius: 20,
+                    life: 1.0,
+                    color: '#00e676',
+                  });
 
-                particlesToRemove.add(p1.id);
-                particlesToRemove.add(p2.id);
+                  particlesToRemove.add(p1.id);
+                  particlesToRemove.add(p2.id);
 
-                // Buat partikel Produk [AB]
-                const prodVx = (p1.vx + p2.vx) * 0.55;
-                const prodVy = (p1.vy + p2.vy) * 0.55;
+                  // Buat partikel Produk [AB] dari konversi kedua reaktan
+                  const prodVx = (p1.vx + p2.vx) * 0.55;
+                  const prodVy = (p1.vy + p2.vy) * 0.55;
 
-                newProducts.push({
-                  id: `P-${Date.now()}-${Math.random()}`,
-                  type: 'P',
-                  x: (p1.x + p2.x) / 2,
-                  y: (p1.y + p2.y) / 2,
-                  vx: prodVx,
-                  vy: prodVy,
-                  radius: 10,
-                  mass: 2,
-                  color: '#10b981',
-                });
+                  newProducts.push({
+                    id: `P-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
+                    type: 'P',
+                    x: (p1.x + p2.x) / 2,
+                    y: (p1.y + p2.y) / 2,
+                    vx: prodVx,
+                    vy: prodVy,
+                    radius: 10,
+                    mass: 2,
+                    color: '#10b981',
+                  });
 
-                break;
-              } else {
-                // Tumbukan biasa
-                this.collisionFlashes.push({
-                  x: (p1.x + p2.x) / 2,
-                  y: (p1.y + p2.y) / 2,
-                  radius: 9,
-                  life: 0.35,
-                  color: 'rgba(255, 255, 255, 0.45)',
-                });
+                  break;
+                } else {
+                  // Tumbukan lenting biasa (tidak memenuhi kriteria efektif)
+                  this.collisionFlashes.push({
+                    x: (p1.x + p2.x) / 2,
+                    y: (p1.y + p2.y) / 2,
+                    radius: 9,
+                    life: 0.35,
+                    color: 'rgba(255, 255, 255, 0.45)',
+                  });
+                }
               }
             } else {
-              // Jika idle, tetap ada efek pantulan visual lembut
-              this.collisionFlashes.push({
-                x: (p1.x + p2.x) / 2,
-                y: (p1.y + p2.y) / 2,
-                radius: 7,
-                life: 0.25,
-                color: 'rgba(56, 189, 248, 0.3)',
-              });
+              // Jika status idle, partikel bergerak dan memantul termal
+              if (isNewCollision) {
+                this.collisionFlashes.push({
+                  x: (p1.x + p2.x) / 2,
+                  y: (p1.y + p2.y) / 2,
+                  radius: 7,
+                  life: 0.25,
+                  color: 'rgba(56, 189, 248, 0.3)',
+                });
+              }
             }
           }
         }
       }
     }
 
+    // Perbarui set pasangan kontak aktif untuk frame selanjutnya
+    this.activeTouchingPairs = currentFrameTouchingPairs;
+
+    // Terapkan konversi reaktan ke produk
     if (particlesToRemove.size > 0) {
       this.particles = this.particles.filter((p) => !particlesToRemove.has(p.id));
       this.particles.push(...newProducts);
@@ -462,13 +568,15 @@ export class SimulationEngine {
   }
 
   /**
-   * Peluang tumbukan efektif berbasis suhu dan energi aktivasi (Arrhenius)
+   * Peluang tumbukan efektif berbasis model Arrhenius:
+   * Peluang = f(T, Katalis) di mana kenaikan suhu meningkatkan fraksi partikel dengan E >= Ea
+   * Katalis menurunkan energi aktivasi sehingga fraksi tumbukan efektif meningkat signifikan
    */
   checkEffectiveCollision() {
     const tempRatio = Math.max(0, Math.min(1, (this.temperature - 10) / 70));
     let prob = 0.12 + 0.63 * Math.pow(tempRatio, 1.4);
     if (this.hasCatalyst) {
-      prob = Math.min(0.92, prob * 1.8);
+      prob = Math.min(0.92, prob * 1.85);
     }
     return Math.random() < prob;
   }
@@ -487,7 +595,7 @@ export class SimulationEngine {
   }
 
   /**
-   * Rekam sampel grafik
+   * Rekam sampel time-series untuk grafik kinetika
    */
   recordTimeSeriesSample() {
     const curTime = Number(this.elapsedTime.toFixed(1));
@@ -499,6 +607,7 @@ export class SimulationEngine {
       time: curTime,
       countA,
       countB,
+      totalReactants: countA + countB,
       productCount: this.productCount,
       rate: Number(currentRate.toFixed(2)),
     });
@@ -510,7 +619,7 @@ export class SimulationEngine {
   }
 
   /**
-   * Render kanvas langsung 60 FPS
+   * Render kanvas 60 FPS dengan penskalaan resolusi DPR dan kontras tinggi
    */
   drawCanvas() {
     const canvas = this.canvas;
@@ -532,15 +641,15 @@ export class SimulationEngine {
     ctx.save();
     ctx.scale(dpr, dpr);
 
-    // 1. Background gradient
+    // 1. Background gradient bertema laboratorium kimia gelap
     const bgGrad = ctx.createLinearGradient(0, 0, w, h);
     bgGrad.addColorStop(0, '#0a101d');
     bgGrad.addColorStop(1, '#0d1829');
     ctx.fillStyle = bgGrad;
     ctx.fillRect(0, 0, w, h);
 
-    // 2. Grid halus
-    ctx.strokeStyle = 'rgba(255, 255, 255, 0.03)';
+    // 2. Garis grid mikroskopik lembut
+    ctx.strokeStyle = 'rgba(255, 255, 255, 0.035)';
     ctx.lineWidth = 1;
     for (let x = 30; x < w; x += 30) {
       ctx.beginPath();
@@ -558,7 +667,7 @@ export class SimulationEngine {
     const scaleX = w / this.width;
     const scaleY = h / this.height;
 
-    // 3. Kilatan tumbukan
+    // 3. Efek kilatan tumbukan
     this.collisionFlashes.forEach((f) => {
       const fx = f.x * scaleX;
       const fy = f.y * scaleY;
@@ -651,7 +760,7 @@ export class SimulationEngine {
   }
 
   /**
-   * Mengembalikan metrik snapshot
+   * Mengembalikan snapshot metrik terhitung
    */
   getMetrics() {
     const timeSafe = Math.max(0.5, this.elapsedTime);
@@ -700,7 +809,7 @@ export class SimulationEngine {
   }
 
   /**
-   * Bersihkan loop
+   * Bersihkan loop dan referensi
    */
   destroy() {
     if (this.animationFrameId) {
