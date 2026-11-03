@@ -194,17 +194,69 @@ Hubungan tumbukan efektif dengan laju reaksi model. - Interpretasi tabel
 atau grafik hasil simulasi. - Penarikan kesimpulan dari perbandingan
 kondisi eksperimen.
 
-Ketentuan: - Versi pertama menggunakan pilihan ganda dengan satu jawaban
-benar. - Setiap soal memiliki opsi, kunci, penjelasan, dan tingkat
-kesulitan. - Siswa harus mengirim jawaban sebelum kunci ditampilkan. -
-Setelah dikirim, tampilkan umpan balik langsung. - Jawaban benar
-menampilkan status "Benar", apresiasi singkat, dan alasan ilmiah. -
-Jawaban salah menampilkan status "Belum tepat", penjelasan kekeliruan,
-dan konsep yang benar. - Umpan balik tidak boleh hanya berupa perubahan
-warna atau ikon. - Siswa dapat melanjutkan ke soal berikutnya setelah
-feedback muncul. - Setelah kuis selesai, tampilkan skor, jumlah
-benar/salah, dan pembahasan. - Sediakan opsi mengulang kuis. - Simpan
-riwayat kuis pada LocalStorage.
+Ketentuan soal: - Versi pertama menggunakan pilihan ganda dengan satu
+jawaban benar. - Setiap soal memiliki ID, opsi, kunci, penjelasan, dan
+tingkat kesulitan. - Simpan riwayat kuis pada LocalStorage.
+
+7.1 Alur per soal (wajib tiga langkah terpisah)
+Setiap soal melewati tiga tahap. Tahap tidak boleh digabung atau
+dilewati.
+
+1. Memilih. Siswa memilih satu opsi. Memilih hanya menandai opsi
+   tersebut sebagai "dipilih". Siswa boleh mengganti pilihan
+   sebanyak yang diinginkan selama belum dikirim.
+2. Mengirim. Siswa menekan tombol "Periksa Jawaban" (atau "Kirim
+   Jawaban"; pilih satu label dan gunakan konsisten). Hanya setelah
+   tombol ini ditekan, jawaban dinilai dan feedback ditampilkan.
+3. Melanjutkan. Setelah feedback tampil, siswa menekan tombol "Soal
+   Berikutnya" (pada soal terakhir: "Lihat Hasil") untuk berpindah.
+
+7.2 Aturan sebelum jawaban dikirim
+- Memilih opsi tidak boleh memicu feedback, status Benar/Belum tepat,
+  penanda kunci, perubahan warna benar/salah, atau penjelasan.
+- Kunci jawaban dan penjelasan tidak boleh dirender ke DOM, class, atau
+  atribut sebelum jawaban dikirim.
+- Tombol "Periksa Jawaban" nonaktif selama belum ada opsi dipilih.
+  Tampilkan petunjuk teks, misalnya "Pilih satu jawaban terlebih
+  dahulu", dan jangan hanya mengandalkan tampilan tombol redup.
+- Tombol "Soal Berikutnya" tidak tampil atau nonaktif sebelum jawaban
+  dikirim. Siswa tidak dapat melewati soal tanpa mengirim jawaban.
+- Opsi yang dipilih harus terlihat jelas dengan teks atau ikon, bukan
+  hanya warna (contoh: tanda "Dipilih").
+
+7.3 Aturan setelah jawaban dikirim
+- Jawaban dikunci. Opsi tidak dapat diganti dan tombol "Periksa
+  Jawaban" menjadi nonaktif atau hilang. Menekan tombol dua kali tidak
+  boleh menghitung jawaban dua kali.
+- Tampilkan umpan balik langsung pada soal yang sama.
+- Jawaban benar: status "Benar", apresiasi singkat, dan alasan ilmiah.
+- Jawaban salah: status "Belum tepat", penjelasan letak kekeliruan,
+  opsi yang benar, dan konsep yang benar.
+- Umpan balik tidak boleh hanya berupa perubahan warna atau ikon;
+  wajib ada teks status dan penjelasan.
+- Setelah feedback tampil, aktifkan "Soal Berikutnya". Tidak ada
+  perpindahan otomatis ke soal berikutnya.
+- Siswa tidak dapat kembali mengubah jawaban soal yang sudah dikirim.
+- Untuk aksesibilitas: area feedback menggunakan aria-live (polite)
+  dan fokus keyboard dipindahkan ke area feedback atau ke tombol
+  "Soal Berikutnya" setelah jawaban dikirim.
+
+7.4 Skor, penyelesaian, dan riwayat
+- Skor dihitung hanya dari jawaban yang sudah dikirim, dengan rumus
+  (jawaban benar / seluruh soal) x 100.
+- Pilihan yang belum dikirim tidak dihitung dan tidak disimpan sebagai
+  jawaban.
+- Kuis dinyatakan selesai setelah semua soal dikirim dan siswa menekan
+  "Lihat Hasil".
+- Setelah selesai, tampilkan skor, jumlah benar/salah, dan pembahasan
+  tiap soal. Sediakan tombol "Ulangi Kuis" yang mengembalikan semua
+  soal ke tahap memilih.
+- Simpan riwayat ke LocalStorage hanya saat kuis selesai, dengan
+  jawaban yang dipilih, status benar/salah, skor, dan waktu selesai.
+  Jika halaman dimuat ulang di tengah kuis, perilaku harus jelas:
+  pulihkan posisi soal dan jawaban yang sudah dikirim, atau mulai
+  ulang dengan pemberitahuan. Pilih satu dan jangan tampilkan keadaan
+  ambigu.
 8. Alur Belajar Laboratorium
 Implementasikan alur berikut secara terhubung:
 1. Siswa membuka Laboratorium Virtual.
@@ -217,8 +269,11 @@ Implementasikan alur berikut secara terhubung:
 6. Siswa dapat menjeda, melanjutkan, atau mengulangi simulasi.
 7. Siswa mengisi formulir data pengamatan.
 8. Sistem memvalidasi dan menyimpan pengamatan.
-9. Siswa mengerjakan kuis berdasarkan konsep dan hasil pengamatan.
-10. Sistem memberikan feedback untuk setiap jawaban.
+9. Siswa memilih jawaban, lalu menekan "Periksa Jawaban" untuk
+   mengirimnya.
+10. Setelah jawaban dikirim, sistem menampilkan feedback (Benar /
+    Belum tepat) beserta penjelasan. Siswa menekan "Soal Berikutnya"
+    untuk melanjutkan.
 11. Sistem menampilkan ringkasan kegiatan dan memperbarui progres siswa.
     Jangan mengizinkan status kegiatan dinyatakan selesai hanya karena
     halaman dibuka. Tentukan penyelesaian berdasarkan aktivitas yang
@@ -297,10 +352,18 @@ diperiksa. - Data tersimpan setelah halaman dimuat ulang. - Ringkasan
 menampilkan data yang sesuai. - Catatan siswa tidak tertimpa data
 simulasi.
 
-Pengujian kuis - Jawaban benar memperoleh feedback benar. - Jawaban
-salah memperoleh feedback salah dan penjelasan. - Skor dihitung dengan
-benar. - Kuis dapat diselesaikan dan diulang. - Riwayat tersimpan dan
-dapat dibaca kembali.
+Pengujian kuis - Memilih opsi tidak memunculkan feedback, kunci, atau
+penjelasan. - Pilihan dapat diganti sebelum dikirim. - Tombol "Periksa
+Jawaban" nonaktif sebelum ada opsi dipilih. - Setelah "Periksa Jawaban",
+jawaban benar memperoleh feedback benar. - Jawaban salah memperoleh
+feedback salah, opsi benar, dan penjelasan. - Setelah dikirim, opsi
+terkunci dan tidak dapat diganti. - Menekan "Periksa Jawaban" berulang
+tidak menghitung dua kali. - "Soal Berikutnya" hanya aktif setelah
+feedback tampil, dan tidak ada perpindahan otomatis. - Soal terakhir
+menampilkan "Lihat Hasil". - Skor hanya dihitung dari jawaban yang
+dikirim dan dihitung dengan benar. - Kuis dapat diselesaikan dan
+diulang. - Riwayat tersimpan dan dapat dibaca kembali. - Alur dapat
+dijalankan dengan keyboard saja (pilih, kirim, lanjut).
 
 Pengujian aplikasi - Jalankan build atau pemeriksaan proyek yang
 tersedia. - Periksa console dan terminal untuk error. - Pastikan

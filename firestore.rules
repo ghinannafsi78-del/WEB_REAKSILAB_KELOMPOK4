@@ -1,0 +1,91 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{db}/documents {
+    // Helper function: Pengguna telah login
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    // Helper function: Pengguna adalah Guru Pengampu yang terdaftar pada config/roles
+    function isTeacher() {
+      return signedIn() &&
+        exists(/databases/$(db)/documents/config/roles) &&
+        request.auth.uid == get(/databases/$(db)/documents/config/roles).data.teacherUid;
+    }
+
+    // Helper function: Data roster siswa
+    function rosterEntry() {
+      return get(/databases/$(db)/documents/roster/$(request.auth.uid)).data;
+    }
+
+    // Helper function: Pengguna adalah Siswa aktif dalam roster kelas
+    function isStudent() {
+      return signedIn() &&
+        exists(/databases/$(db)/documents/roster/$(request.auth.uid)) &&
+        rosterEntry().active == true;
+    }
+
+    // Validasi skema umum dokumen results/{attemptId}
+    function validCommon(attemptId) {
+      let d = request.resource.data;
+      return d.keys().hasOnly([
+          'id', 'ownerId', 'alias', 'moduleId', 'activityId', 'questionVersion', 'kind',
+          'answers', 'score', 'completedAt', 'receivedAt', 'simulation',
+          'totalQuestions', 'correctAnswers', 'incorrectAnswers'
+        ])
+        && d.id == attemptId
+        && d.ownerId == request.auth.uid
+        && d.alias == rosterEntry().alias
+        && d.kind in ['quiz', 'lab-observation', 'module-complete']
+        && d.moduleId is string
+        && d.activityId is string
+        && d.questionVersion is string
+        && d.answers is map
+        && (d.score == null || (d.score is number && d.score >= 0 && d.score <= 100))
+        && d.completedAt is string
+        && d.receivedAt == request.time;
+    }
+
+    // Validasi khusus untuk hasil kuis formatif
+    function validQuiz() {
+      let d = request.resource.data;
+      return d.kind != 'quiz' || (
+        d.totalQuestions is int && d.totalQuestions > 0
+        && d.correctAnswers is int && d.incorrectAnswers is int
+        && d.correctAnswers + d.incorrectAnswers == d.totalQuestions
+        && d.answers.size() == d.totalQuestions
+        && d.score is number
+      );
+    }
+
+    // 1. Koleksi config
+    // Dokumen roles hanya dapat dibaca oleh guru yang cocok dengan teacherUid; penulisan hanya dari Firebase Console
+    match /config/roles {
+      allow read: if signedIn() && (
+        resource == null || request.auth.uid == resource.data.teacherUid
+      );
+      allow write: if false;
+    }
+
+    match /config/{doc} {
+      allow read, write: if false;
+    }
+
+    // 2. Koleksi roster/{uid}
+    // Siswa hanya dapat membaca datanya sendiri; Guru dapat membaca seluruh data roster
+    match /roster/{uid} {
+      allow read: if signedIn() && (request.auth.uid == uid || isTeacher());
+      allow write: if false;
+    }
+
+    // 3. Koleksi results/{attemptId}
+    // Create-only oleh siswa aktif; Baca oleh guru atau pemilik; Dilarang update dan delete
+    match /results/{attemptId} {
+      allow read: if isTeacher() ||
+                     (isStudent() && resource.data.ownerId == request.auth.uid);
+      allow create: if isStudent() && validCommon(attemptId) && validQuiz();
+      allow update, delete: if false;
+    }
+  }
+}
+

@@ -1,6 +1,8 @@
 import { useState, useMemo } from 'react';
 import { getQuestionsByExperiment } from '../../data/labQuizQuestions.js';
 import { addQuizAttempt } from '../../services/progressService.js';
+import { enqueueResult } from '../../services/syncService.js';
+import { getCurrentSession } from '../../services/authService.js';
 import './LaboratoryQuiz.css';
 
 /**
@@ -65,6 +67,31 @@ export default function LaboratoryQuiz({
         totalQuestions: questions.length,
         correctAnswers: totalCorrect,
       });
+
+      // Sinkronkan ke cloud jika dalam Mode Akun aktif
+      const session = getCurrentSession();
+      if (session.active && session.user?.uid) {
+        const answersMap = {};
+        answersHistory.forEach((a) => {
+          if (a.questionId) answersMap[a.questionId] = a.selectedIndex;
+        });
+        answersMap[currentQ.id] = selectedOpt;
+
+        enqueueResult({
+          moduleId: 'modul-01',
+          activityId: `quiz-${experiment?.id || 'lab'}`,
+          questionVersion: 'qb-2026-11-03',
+          kind: 'quiz',
+          answers: answersMap,
+          score,
+          totalQuestions: questions.length,
+          correctAnswers: totalCorrect,
+          incorrectAnswers: questions.length - totalCorrect,
+          completedAt: new Date().toISOString(),
+        }).catch((err) => {
+          console.warn('[LaboratoryQuiz] Gagal enqueue kuis lab:', err);
+        });
+      }
 
       if (onQuizCompleted) {
         onQuizCompleted({

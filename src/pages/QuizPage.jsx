@@ -1,8 +1,13 @@
-import { useState } from 'react';
+/* eslint-disable react-refresh/only-export-components */
+import { useState, useEffect } from 'react';
 import { addQuizAttempt } from '../services/progressService.js';
+import { enqueueResult } from '../services/syncService.js';
+import { getCurrentSession, subscribeAuthState } from '../services/authService.js';
 import './QuizPage.css';
 
-const QUIZ_QUESTIONS = [
+export const QUESTION_BANK_VERSION = 'qb-2026-11-03';
+
+export const QUIZ_QUESTIONS = [
   {
     id: 'q1',
     category: 'Teori Tumbukan',
@@ -59,38 +64,99 @@ const QUIZ_QUESTIONS = [
 export default function QuizPage({ onNavigate, onQuizCompleted }) {
   const [currentIdx, setCurrentIdx] = useState(0);
   const [selectedOpt, setSelectedOpt] = useState(null);
-  const [isAnswered, setIsAnswered] = useState(false);
+  const [hasChecked, setHasChecked] = useState(false);
   const [score, setScore] = useState(0);
   const [isFinished, setIsFinished] = useState(false);
+  const [userAnswersMap, setUserAnswersMap] = useState({});
+  const [authSession, setAuthSession] = useState(getCurrentSession());
+  const [cloudSyncStatus, setCloudSyncStatus] = useState(null);
+
+  useEffect(() => {
+    const unsub = subscribeAuthState((session) => {
+      setAuthSession(session);
+    });
+    return unsub;
+  }, []);
 
   const currentQ = QUIZ_QUESTIONS[currentIdx];
 
+  // Tahap 1: Memilih Opsi (bebas diganti sebelum periksa jawaban)
   const handleSelectOption = (index) => {
-    if (isAnswered) return;
+    if (hasChecked) return;
     setSelectedOpt(index);
-    setIsAnswered(true);
+  };
 
-    const isCorrect = index === currentQ.correctAnswer;
+  // Tahap 2: Mengirim / Periksa Jawaban
+  const handleCheckAnswer = () => {
+    if (selectedOpt === null || hasChecked) return;
+    setHasChecked(true);
+
+    const isCorrect = selectedOpt === currentQ.correctAnswer;
     if (isCorrect) {
       setScore((prev) => prev + 1);
     }
+
+    // Rekam jawaban siswa per ID soal
+    setUserAnswersMap((prev) => ({
+      ...prev,
+      [currentQ.id]: selectedOpt,
+    }));
   };
 
-  const handleNext = () => {
+  // Tahap 3: Melanjutkan ke soal berikutnya / lihat hasil
+  const handleNext = async () => {
+    if (!hasChecked) return;
+
     if (currentIdx + 1 < QUIZ_QUESTIONS.length) {
       setCurrentIdx((prev) => prev + 1);
       setSelectedOpt(null);
-      setIsAnswered(false);
+      setHasChecked(false);
     } else {
-      // Selesai kuis
+      // Kuis selesai seluruhnya
       setIsFinished(true);
-      const finalScorePercent = Math.round((score / QUIZ_QUESTIONS.length) * 100);
+      const totalCorrect = score;
+      const finalScorePercent = Math.round((totalCorrect / QUIZ_QUESTIONS.length) * 100);
+
+      // 1. Simpan ke LocalStorage (selalu tersimpan, mode tamu maupun akun)
       addQuizAttempt({
-        category: 'Laju Reaksi XI',
+        category: 'Kuis Evaluasi Formatif',
         score: finalScorePercent,
         totalQuestions: QUIZ_QUESTIONS.length,
-        correctAnswers: score,
+        correctAnswers: totalCorrect,
       });
+
+      // 2. Jika dalam Mode Akun (siswa terdaftar dan aktif), enqueue ke antrean Firestore
+      if (authSession.active && authSession.user?.uid) {
+        try {
+          const finalAnswers = {
+            ...userAnswersMap,
+            [currentQ.id]: selectedOpt,
+          };
+
+          const enqueueRes = await enqueueResult({
+            moduleId: 'modul-01',
+            activityId: 'quiz-formatif-laju',
+            questionVersion: QUESTION_BANK_VERSION,
+            kind: 'quiz',
+            answers: finalAnswers,
+            score: finalScorePercent,
+            totalQuestions: QUIZ_QUESTIONS.length,
+            correctAnswers: totalCorrect,
+            incorrectAnswers: QUIZ_QUESTIONS.length - totalCorrect,
+            completedAt: new Date().toISOString(),
+          });
+
+          if (enqueueRes.success) {
+            setCloudSyncStatus('cloud');
+          }
+        } catch (err) {
+          console.warn('[QuizPage] Gagal mengantrekan hasil kuis ke cloud:', err);
+          setCloudSyncStatus('local-only');
+        }
+      } else {
+        setCloudSyncStatus('guest');
+      }
+
       if (onQuizCompleted) onQuizCompleted();
     }
   };
@@ -98,9 +164,11 @@ export default function QuizPage({ onNavigate, onQuizCompleted }) {
   const handleRestart = () => {
     setCurrentIdx(0);
     setSelectedOpt(null);
-    setIsAnswered(false);
+    setHasChecked(false);
     setScore(0);
     setIsFinished(false);
+    setUserAnswersMap({});
+    setCloudSyncStatus(null);
   };
 
   return (
@@ -128,32 +196,60 @@ export default function QuizPage({ onNavigate, onQuizCompleted }) {
 
             <h2 className="quiz-question-text">{currentQ.question}</h2>
 
-            <div className="quiz-options-list">
+            {/* Daftar Opsi Jawaban */}
+            <div className="quiz-options-list" role="radiogroup" aria-label="Pilihan jawaban">
               {currentQ.options.map((opt, i) => {
                 let statusClass = '';
-                if (isAnswered) {
+                if (hasChecked) {
                   if (i === currentQ.correctAnswer) statusClass = 'correct';
                   else if (i === selectedOpt) statusClass = 'wrong';
                 }
 
+                const isSelected = selectedOpt === i;
+
                 return (
                   <button
                     key={i}
-                    className={`quiz-option-btn ${selectedOpt === i ? 'selected' : ''} ${statusClass}`}
+                    type="button"
+                    role="radio"
+                    aria-checked={isSelected}
+                    className={`quiz-option-btn ${isSelected ? 'selected' : ''} ${statusClass}`}
                     onClick={() => handleSelectOption(i)}
-                    disabled={isAnswered}
+                    disabled={hasChecked}
                   >
                     <span className="option-indicator">
                       {String.fromCharCode(65 + i)}
                     </span>
                     <span className="option-text">{opt}</span>
+                    {isSelected && !hasChecked && (
+                      <span className="selected-indicator-pill" aria-hidden="true">Dipilih</span>
+                    )}
                   </button>
                 );
               })}
             </div>
 
-            {/* Feedback dan Pembahasan */}
-            {isAnswered && (
+            {/* Tombol Periksa Jawaban (Alur 3 Tahap) */}
+            {!hasChecked && (
+              <div className="quiz-action-bar">
+                {selectedOpt === null && (
+                  <span className="quiz-hint-text">
+                    💡 Pilih salah satu opsi di atas untuk mengaktifkan tombol periksa.
+                  </span>
+                )}
+                <button
+                  id="btn-check-answer"
+                  className="btn btn-primary"
+                  onClick={handleCheckAnswer}
+                  disabled={selectedOpt === null}
+                >
+                  Periksa Jawaban
+                </button>
+              </div>
+            )}
+
+            {/* Feedback dan Pembahasan setelah Periksa Jawaban */}
+            {hasChecked && (
               <div className="quiz-explanation-box">
                 <strong>
                   {selectedOpt === currentQ.correctAnswer ? '🎉 Jawaban Benar!' : '⚠️ Kurang Tepat!'}
@@ -161,7 +257,9 @@ export default function QuizPage({ onNavigate, onQuizCompleted }) {
                 <p>{currentQ.explanation}</p>
                 <div className="explanation-next-action">
                   <button id="btn-next-question" className="btn btn-primary" onClick={handleNext}>
-                    {currentIdx + 1 < QUIZ_QUESTIONS.length ? 'Lanjut ke Soal Berikutnya &rarr;' : 'Lihat Hasil Kuis'}
+                    {currentIdx + 1 < QUIZ_QUESTIONS.length
+                      ? 'Lanjut ke Soal Berikutnya \u2192'
+                      : 'Lihat Hasil Kuis'}
                   </button>
                 </div>
               </div>
@@ -174,8 +272,30 @@ export default function QuizPage({ onNavigate, onQuizCompleted }) {
               Skor Kamu: {Math.round((score / QUIZ_QUESTIONS.length) * 100)} / 100
             </h2>
             <p className="result-breakdown">
-              Kamu menjawab dengan benar <strong>{score}</strong> dari {QUIZ_QUESTIONS.length} pertanyaan. Hasil kuis telah disimpan ke riwayat progres lokal kamu.
+              Kamu menjawab dengan benar <strong>{score}</strong> dari {QUIZ_QUESTIONS.length} pertanyaan.
             </p>
+
+            {/* Status Penyimpanan Cloud / Lokal */}
+            <div className="quiz-storage-status-box">
+              {cloudSyncStatus === 'cloud' && (
+                <div className="sync-alert success">
+                  <span className="sync-icon">☁️</span>
+                  <span>Hasil berhasil disimpan ke akun <strong>{authSession.alias}</strong> dan diantrekan ke Cloud Firestore.</span>
+                </div>
+              )}
+              {cloudSyncStatus === 'guest' && (
+                <div className="sync-alert guest">
+                  <span className="sync-icon">💾</span>
+                  <span>Mode Tamu: Hasil kuis tersimpan di penyimpanan lokal browser. Masuk akun untuk menyinkronkan hasil ke cloud.</span>
+                </div>
+              )}
+              {cloudSyncStatus === 'local-only' && (
+                <div className="sync-alert warning">
+                  <span className="sync-icon">⚠️</span>
+                  <span>Hasil tersimpan di lokal dan akan disinkronkan ke cloud saat koneksi terhubung.</span>
+                </div>
+              )}
+            </div>
 
             <div className="result-actions-row">
               <button className="btn btn-primary" onClick={handleRestart}>

@@ -1,13 +1,29 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { getCurrentSession, subscribeAuthState } from '../../services/authService.js';
 import './Navbar.css';
 
 /**
  * Navbar.jsx
  * Komponen navigasi utama REAKSI LAB
- * Mendukung desktop dan tampilan mobile dengan drawer responsif
+ * Mendukung desktop dan tampilan mobile dengan drawer responsif,
+ * indikator tema, progres belajar, serta status autentikasi siswa/guru
  */
-export default function Navbar({ activePage = 'beranda', onNavigate, overallProgress = 0, currentTheme = 'dark', onToggleTheme }) {
+export default function Navbar({
+  activePage = 'beranda',
+  onNavigate,
+  overallProgress = 0,
+  currentTheme = 'dark',
+  onToggleTheme,
+  onOpenAuthModal,
+}) {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [session, setSession] = useState(getCurrentSession());
+
+  useEffect(() => {
+    return subscribeAuthState((newSession) => {
+      setSession(newSession);
+    });
+  }, []);
 
   const navItems = [
     { id: 'beranda', label: 'Beranda' },
@@ -16,6 +32,10 @@ export default function Navbar({ activePage = 'beranda', onNavigate, overallProg
     { id: 'kuis', label: 'Kuis' },
     { id: 'progres', label: 'Progres Belajar' },
   ];
+
+  if (session.role === 'teacher') {
+    navItems.push({ id: 'guru', label: 'Dasbor Guru' });
+  }
 
   const handleNavClick = (pageId) => {
     if (onNavigate) {
@@ -80,7 +100,7 @@ export default function Navbar({ activePage = 'beranda', onNavigate, overallProg
           </ul>
         </nav>
 
-        {/* Action Controls: Progress Badge + Theme Toggle + Mobile Menu Button */}
+        {/* Action Controls: Progress Badge + Auth Pill + Theme Toggle + Mobile Menu Button */}
         <div className="navbar-actions">
           {/* Quick Progress Indicator */}
           <div
@@ -94,6 +114,22 @@ export default function Navbar({ activePage = 'beranda', onNavigate, overallProg
             <span className="progress-dot" aria-hidden="true"></span>
             <span className="progress-text">{overallProgress}% Selesai</span>
           </div>
+
+          {/* User Account / Auth Trigger */}
+          <button
+            id="auth-status-btn"
+            className={`navbar-auth-btn ${session.user ? 'logged-in' : 'guest'}`}
+            onClick={onOpenAuthModal}
+            title={session.user ? `Terhubung sebagai ${session.alias || session.user.email}` : 'Masuk Akun Cloud'}
+            aria-label="Manajemen Akun dan Sinkronisasi"
+          >
+            <span className="auth-user-icon">
+              {session.role === 'teacher' ? '👨‍🏫' : session.role === 'student' ? '🎓' : '👤'}
+            </span>
+            <span className="auth-btn-label">
+              {session.user ? (session.alias || 'Akun') : 'Masuk'}
+            </span>
+          </button>
 
           {/* Theme Toggle */}
           {onToggleTheme && (

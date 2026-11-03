@@ -134,21 +134,25 @@ laboratorium fisik.
 
 - Tombol untuk mengulang eksperimen dan mengatur ulang progres.
 
+### Hasil Belajar Cloud (Integrasi Database)
+
+Sesuai spesifikasi DATABASE.md, REAKSI LAB menyediakan fitur integrasi penyimpanan hasil belajar ke cloud berbasis Firebase sebagai pelengkap mode offline/tamu:
+- **Mode Tamu (Guest Mode):** Siswa dapat belajar dan bereksperimen penuh tanpa akun; seluruh progres dan data disimpan di LocalStorage (kunci reaksi-lab-progress).
+- **Mode Akun (Account Mode):** Siswa yang terdaftar pada roster dapat login dan menyinkronkan hasil evaluasi kuis formatif serta lembar pengamatan laboratorium virtual ke Cloud Firestore.
+- **Portal Guru (Teacher Dashboard):** Guru terverifikasi (UID terdaftar pada config/roles) dapat memantau progres seluruh siswa, memeriksa jawaban kuis per butir soal, serta meninjau parameter simulasi dan catatan interpretasi siswa.
+- Rujukan spesifikasi arsitektur data, skema koleksi, dan aturan keamanan dijabarkan lengkap dalam DATABASE.md.
+
 ### Di Luar Ruang Lingkup Versi Pertama
 
-- Login dan registrasi akun.
+- Registrasi publik mandiri tanpa persetujuan guru (pendaftaran siswa dikelola via roster).
 
-- Database atau backend.
+- Kelas daring multi-ruang / multi-sekolah dengan banyak guru (arsitektur didesain untuk satu kelas, satu guru).
 
-- Sinkronisasi progres antarperangkat.
+- Penilaian otomatis berbasis AI atau auto-grading esai.
 
-- Kelas daring dengan banyak pengguna.
+- Sinkronisasi instan real-time peer-to-peer antar-siswa.
 
-- Penilaian otomatis berbasis AI.
-
-- Klaim bahwa simulasi merupakan pengganti sepenuhnya bagi eksperimen
-
-laboratorium nyata.
+- Klaim bahwa simulasi merupakan pengganti sepenuhnya bagi eksperimen laboratorium nyata.
 
 ## 6. Struktur Navigasi
 
@@ -1431,6 +1435,14 @@ struktur contoh ini.
 - CSS responsif.
 
 - React Router jika diperlukan untuk navigasi ant halaman.
+
+### Backend dan Penyimpanan Cloud (DATABASE.md)
+
+- Firebase Authentication (autentikasi siswa terdaftar dan guru).
+
+- Cloud Firestore (database NoSQL untuk koleksi config/roles, roster/{uid}, dan results/{attemptId}).
+
+- Firebase JavaScript SDK v13 (modular client).
 
 ### Pengelolaan Data
 

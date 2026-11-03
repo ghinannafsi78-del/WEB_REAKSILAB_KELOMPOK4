@@ -6,18 +6,21 @@ import ModulesPage from './pages/ModulesPage.jsx';
 import LaboratoryPage from './pages/LaboratoryPage.jsx';
 import QuizPage from './pages/QuizPage.jsx';
 import ProgressPage from './pages/ProgressPage.jsx';
+import TeacherDashboard from './pages/TeacherDashboard.jsx';
+import AuthModal from './components/auth/AuthModal.jsx';
 import { useProgress } from './hooks/useProgress.js';
 import './App.css';
 
 /**
  * App.tsx
  * Komponen root aplikasi REAKSI LAB
- * Mengelola navigasi aktif, tema, dan integrasi data progres siswa
+ * Mengelola navigasi aktif, tema, dialog autentikasi, dan integrasi data progres siswa
  */
 export default function App() {
-  const [activePage, setActivePage] = useState<'beranda' | 'materi' | 'lab' | 'kuis' | 'progres'>('beranda');
+  const [activePage, setActivePage] = useState<'beranda' | 'materi' | 'lab' | 'kuis' | 'progres' | 'guru'>('beranda');
   const [selectedModuleId, setSelectedModuleId] = useState<string | null>(null);
   const [selectedExperimentId, setSelectedExperimentId] = useState<string | null>(null);
+  const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
   const [theme, setTheme] = useState<'dark' | 'light'>(() => {
     if (typeof window === 'undefined') return 'dark';
     const saved = localStorage.getItem('reaksi-lab-theme') as 'dark' | 'light' | null;
@@ -47,7 +50,7 @@ export default function App() {
     document.documentElement.setAttribute('data-theme', next);
   };
 
-  const handleNavigate = (pageId: 'beranda' | 'materi' | 'lab' | 'kuis' | 'progres') => {
+  const handleNavigate = (pageId: 'beranda' | 'materi' | 'lab' | 'kuis' | 'progres' | 'guru') => {
     setActivePage(pageId);
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
@@ -73,6 +76,7 @@ export default function App() {
         overallProgress={overallPercent}
         currentTheme={theme}
         onToggleTheme={toggleTheme}
+        onOpenAuthModal={() => setIsAuthModalOpen(true)}
       />
 
       {/* 2. Main Content Routing */}
@@ -124,10 +128,21 @@ export default function App() {
             resetProgress={resetProgress}
           />
         )}
+
+        {activePage === 'guru' && (
+          <TeacherDashboard onNavigate={handleNavigate} />
+        )}
       </main>
 
       {/* 3. Footer */}
       <Footer onNavigate={handleNavigate} />
+
+      {/* 4. Modal Autentikasi Siswa / Guru & Migrasi Data Tamu */}
+      <AuthModal
+        isOpen={isAuthModalOpen}
+        onClose={() => setIsAuthModalOpen(false)}
+        onNavigate={handleNavigate}
+      />
     </div>
   );
 }

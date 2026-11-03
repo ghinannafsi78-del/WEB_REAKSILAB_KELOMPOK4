@@ -1,11 +1,15 @@
+import { useState, useEffect } from 'react';
 import { MODULES_DATA } from '../data/modules.js';
 import { EXPERIMENTS_DATA } from '../data/experiments.js';
+import { getCurrentSession, subscribeAuthState } from '../services/authService.js';
+import { getSyncStats } from '../services/syncService.js';
 import './ProgressPage.css';
 
 /**
  * ProgressPage.jsx
  * Halaman detail pemantauan progres belajar siswa REAKSI LAB
- * Seluruh data dibaca murni dari LocalStorage tanpa angka fiktif
+ * Mendukung Mode Tamu (LocalStorage) dan Mode Akun (Cloud Firestore)
+ * Sesuai spesifikasi PRD Bab 11, 13 & DATABASE.md
  */
 export default function ProgressPage({
   onNavigate,
@@ -16,12 +20,28 @@ export default function ProgressPage({
   toggleModule,
   resetProgress,
 }) {
+  const [session, setSession] = useState(getCurrentSession());
+
+  useEffect(() => {
+    return subscribeAuthState(setSession);
+  }, []);
+
   const completedModulesCount = progress?.completedModules?.length || 0;
   const completedExpCount = progress?.completedExperiments?.length || 0;
   const attempts = progress?.quizAttempts || [];
 
   const handleReset = () => {
-    if (window.confirm('Apakah kamu yakin ingin mengatur ulang seluruh data progres belajar di perangkat ini?')) {
+    let warningMsg = 'Apakah kamu yakin ingin mengatur ulang seluruh data progres belajar lokal di perangkat ini?';
+    if (session.user?.uid) {
+      const stats = getSyncStats(session.user.uid);
+      if (stats.pending > 0) {
+        warningMsg = `Perhatian: Terdapat ${stats.pending} aktivitas belajar yang belum selesai disinkronkan ke cloud. Mengatur ulang hanya menghapus data lokal di perangkat ini, hasil yang sudah terkirim ke cloud tetap aman. Lanjutkan?`;
+      } else {
+        warningMsg = 'Mengatur ulang progres hanya menghapus riwayat di peramban ini. Data capaian cloud Anda tetap tersimpan aman. Lanjutkan?';
+      }
+    }
+
+    if (window.confirm(warningMsg)) {
       resetProgress();
     }
   };
@@ -32,10 +52,13 @@ export default function ProgressPage({
         <button className="back-btn" onClick={() => onNavigate('beranda')}>
           &larr; Kembali ke Beranda
         </button>
-        <span className="page-category-badge">DATA PROGRES LOKAL</span>
+        <span className="page-category-badge">
+          {session.user ? `MODE AKUN: ${session.alias || 'TERDAFTAR'}` : 'MODE TAMU: PENYIMPANAN LOKAL'}
+        </span>
         <h1 className="progress-main-title">Progres Belajar Siswa</h1>
         <p className="progress-main-subtitle">
-          Data capaian pembelajaran kimia Laju Reaksi yang tersimpan pada penyimpanan perangkat kamu.
+          Data capaian pembelajaran kimia Laju Reaksi yang tersimpan pada perangkat kamu.
+          {session.user && ' Hasil evaluasi Anda tersinkronisasi dengan akun kelas.'}
         </p>
       </div>
 
@@ -63,7 +86,7 @@ export default function ProgressPage({
 
         <div className="banner-actions">
           <button className="btn btn-secondary btn-reset" onClick={handleReset}>
-            Atur Ulang Progres
+            Atur Ulang Progres Lokal
           </button>
         </div>
       </div>
