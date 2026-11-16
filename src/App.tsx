@@ -21,6 +21,7 @@ export default function App() {
   const [selectedModuleId, setSelectedModuleId] = useState<string | null>(null);
   const [selectedExperimentId, setSelectedExperimentId] = useState<string | null>(null);
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
+  const [authModalMode, setAuthModalMode] = useState<'login' | 'register'>('login');
   const [theme, setTheme] = useState<'dark' | 'light'>(() => {
     if (typeof window === 'undefined') return 'dark';
     const saved = localStorage.getItem('reaksi-lab-theme') as 'dark' | 'light' | null;
@@ -76,7 +77,10 @@ export default function App() {
         overallProgress={overallPercent}
         currentTheme={theme}
         onToggleTheme={toggleTheme}
-        onOpenAuthModal={() => setIsAuthModalOpen(true)}
+        onOpenAuthModal={(mode: 'login' | 'register' = 'login') => {
+          setAuthModalMode(mode);
+          setIsAuthModalOpen(true);
+        }}
       />
 
       {/* 2. Main Content Routing */}
@@ -140,6 +144,7 @@ export default function App() {
       {/* 4. Modal Autentikasi Siswa / Guru & Migrasi Data Tamu */}
       <AuthModal
         isOpen={isAuthModalOpen}
+        initialMode={authModalMode}
         onClose={() => setIsAuthModalOpen(false)}
         onNavigate={handleNavigate}
       />

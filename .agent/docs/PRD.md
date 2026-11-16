@@ -144,7 +144,7 @@ Sesuai spesifikasi DATABASE.md, REAKSI LAB menyediakan fitur integrasi penyimpan
 
 ### Di Luar Ruang Lingkup Versi Pertama
 
-- Registrasi publik mandiri tanpa persetujuan guru (pendaftaran siswa dikelola via roster).
+- Pendaftaran siswa dapat diajukan mandiri (dengan status pending pada dokumen `registrations`), tetapi aktivasi dan hak akses kelas ke penyimpanan cloud tetap disetujui pengelola melalui penambahan `roster/{uid}` aktif. Pendaftaran mandiri tidak serta-merta memberikan akses kelas atau peran guru tanpa verifikasi pengelola.
 
 - Kelas daring multi-ruang / multi-sekolah dengan banyak guru (arsitektur didesain untuk satu kelas, satu guru).
 

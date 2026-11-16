@@ -1,31 +1,44 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{db}/documents {
-    // Helper function: Pengguna telah login
+
+    // =========================================================================
+    // HELPER FUNCTIONS: AUTENTIKASI & IDENTITAS DASAR
+    // =========================================================================
+
+    // Pengguna telah login (Firebase Auth session valid)
     function signedIn() {
       return request.auth != null;
     }
 
-    // Helper function: Pengguna adalah Guru Pengampu yang terdaftar pada config/roles
+    // Pengguna adalah Guru Pengampu yang terdaftar
+    // Mendukung dua sumber: config/roles.teacherUid dan settings/classroom.teacherUid
     function isTeacher() {
-      return signedIn() &&
-        exists(/databases/$(db)/documents/config/roles) &&
-        request.auth.uid == get(/databases/$(db)/documents/config/roles).data.teacherUid;
+      return signedIn() && (
+        (exists(/databases/$(db)/documents/config/roles) &&
+         request.auth.uid == get(/databases/$(db)/documents/config/roles).data.get('teacherUid', '')) ||
+        (exists(/databases/$(db)/documents/settings/classroom) &&
+         request.auth.uid == get(/databases/$(db)/documents/settings/classroom).data.get('teacherUid', ''))
+      );
     }
 
-    // Helper function: Data roster siswa
+    // =========================================================================
+    // HELPER FUNCTIONS: SUBSISTEM LEGACY (roster & results)
+    // =========================================================================
+
+    // Data roster siswa (Legacy)
     function rosterEntry() {
       return get(/databases/$(db)/documents/roster/$(request.auth.uid)).data;
     }
 
-    // Helper function: Pengguna adalah Siswa aktif dalam roster kelas
+    // Pengguna adalah Siswa aktif dalam roster kelas (Legacy)
     function isStudent() {
       return signedIn() &&
         exists(/databases/$(db)/documents/roster/$(request.auth.uid)) &&
         rosterEntry().active == true;
     }
 
-    // Validasi skema umum dokumen results/{attemptId}
+    // Validasi skema umum dokumen results/{attemptId} (Legacy, 15 field)
     function validCommon(attemptId) {
       let d = request.resource.data;
       return d.keys().hasOnly([
@@ -46,7 +59,7 @@ service cloud.firestore {
         && d.receivedAt == request.time;
     }
 
-    // Validasi khusus untuk hasil kuis formatif
+    // Validasi khusus untuk hasil kuis formatif (Legacy)
     function validQuiz() {
       let d = request.resource.data;
       return d.kind != 'quiz' || (
@@ -58,11 +71,76 @@ service cloud.firestore {
       );
     }
 
-    // 1. Koleksi config
+    // Validasi pendaftaran akun siswa mandiri (Legacy)
+    function validRegistration(uid) {
+      let d = request.resource.data;
+      return d.keys().hasOnly(['name', 'kelas', 'status', 'createdAt'])
+        && request.auth.uid == uid
+        && d.name is string && d.name.size() >= 2 && d.name.size() <= 80
+        && d.kelas is string && d.kelas.size() >= 1 && d.kelas.size() <= 20
+        && d.status == 'pending'
+        && d.createdAt == request.time
+        && !exists(/databases/$(db)/documents/registrations/$(uid));
+    }
+
+    // =========================================================================
+    // HELPER FUNCTIONS: SUBSISTEM HANDOUT (members & attempts)
+    // =========================================================================
+
+    // Data keanggotaan siswa pada Handout (members)
+    function memberEntry() {
+      return get(/databases/$(db)/documents/members/$(request.auth.uid)).data;
+    }
+
+    // Pengguna adalah Siswa aktif pada Handout Prosedur 4-05 (members)
+    // Konsisten dengan authService.js (aktif kecuali jika active == false)
+    function isHandoutStudent() {
+      return signedIn() &&
+        exists(/databases/$(db)/documents/members/$(request.auth.uid)) &&
+        memberEntry().get('active', true) != false;
+    }
+
+    // Alias resmi anggota kelas dari dokumen members/{uid}
+    function memberOfficialAlias() {
+      return memberEntry().get('alias', memberEntry().get('name', ''));
+    }
+
+    // Memastikan anggota memiliki identitas resmi yang valid (string 2-80 karakter)
+    function hasValidMemberIdentity() {
+      let a = memberOfficialAlias();
+      return a is string && a.size() >= 2 && a.size() <= 80;
+    }
+
+    // Validasi kontrak dokumen attempts/{id} (11 field, attemptContract.js)
+    function validAttempt(id) {
+      let d = request.resource.data;
+      return d.keys().hasOnly([
+          'id', 'ownerId', 'alias', 'moduleId', 'activityId',
+          'questionVersion', 'kind', 'answers', 'score', 'completedAt', 'receivedAt'
+        ])
+        && d.id == id
+        && d.ownerId == request.auth.uid
+        && hasValidMemberIdentity()
+        && d.alias == memberOfficialAlias()
+        && d.moduleId is string && d.moduleId.size() > 0 && d.moduleId.size() <= 64
+        && d.activityId is string && d.activityId.size() > 0 && d.activityId.size() <= 64
+        && d.questionVersion is string && d.questionVersion.size() > 0 && d.questionVersion.size() <= 32
+        && d.kind in ['diagnostic', 'practice', 'pretest', 'posttest', 'observation']
+        && d.answers is map && d.answers.size() >= 1 && d.answers.size() <= 30
+        && d.score is number && d.score >= 0 && d.score <= 100
+        && d.completedAt is string
+        && d.receivedAt == request.time;
+    }
+
+    // =========================================================================
+    // 1. KOLEKSI KONFIGURASI DAN PENGATURAN KELAS
+    // =========================================================================
+
+    // 1a. config/roles (Legacy)
     // Dokumen roles hanya dapat dibaca oleh guru yang cocok dengan teacherUid; penulisan hanya dari Firebase Console
     match /config/roles {
       allow read: if signedIn() && (
-        resource == null || request.auth.uid == resource.data.teacherUid
+        resource == null || request.auth.uid == resource.data.get('teacherUid', '')
       );
       allow write: if false;
     }
@@ -71,21 +149,78 @@ service cloud.firestore {
       allow read, write: if false;
     }
 
-    // 2. Koleksi roster/{uid}
+    // 1b. settings/classroom (Handout Prosedur 4-05)
+    // Pengaturan kelas dapat dibaca oleh seluruh pengguna login; penulisan hanya dari Firebase Console
+    match /settings/classroom {
+      allow read: if signedIn();
+      allow write: if false;
+    }
+
+    match /settings/{doc} {
+      allow read, write: if false;
+    }
+
+    // =========================================================================
+    // 2. KOLEKSI KEANGGOTAAN SISWA
+    // =========================================================================
+
+    // 2a. roster/{uid} (Legacy)
     // Siswa hanya dapat membaca datanya sendiri; Guru dapat membaca seluruh data roster
     match /roster/{uid} {
       allow read: if signedIn() && (request.auth.uid == uid || isTeacher());
       allow write: if false;
     }
 
-    // 3. Koleksi results/{attemptId}
-    // Create-only oleh siswa aktif; Baca oleh guru atau pemilik; Dilarang update dan delete
+    // 2b. members/{uid} (Handout Prosedur 4-05)
+    // Siswa hanya dapat membaca datanya sendiri; Guru dapat membaca seluruh data anggota
+    match /members/{uid} {
+      allow read: if signedIn() && (request.auth.uid == uid || isTeacher());
+      allow write: if false;
+    }
+
+    // =========================================================================
+    // 3. PENDAFTARAN SISWA MANDIRI
+    // =========================================================================
+
+    // registrations/{uid} (Legacy)
+    // Baca: Pemilik atau Guru; Buat: Skema pending valid; Update/Delete: ditolak
+    match /registrations/{uid} {
+      allow read: if signedIn() && (request.auth.uid == uid || isTeacher());
+      allow create: if signedIn() && validRegistration(uid);
+      allow update, delete: if false;
+    }
+
+    // =========================================================================
+    // 4. HASIL BELAJAR SISWA
+    // =========================================================================
+
+    // 4a. results/{attemptId} (Legacy — Kuis Interaktif & Pengamatan Lab)
+    // Create-only oleh siswa aktif roster; Baca oleh guru atau pemilik; Update dan delete ditolak
     match /results/{attemptId} {
       allow read: if isTeacher() ||
                      (isStudent() && resource.data.ownerId == request.auth.uid);
       allow create: if isStudent() && validCommon(attemptId) && validQuiz();
       allow update, delete: if false;
     }
+
+    // 4b. attempts/{id} (Handout Prosedur 4-05 — Hasil Belajar Kontrak Baru)
+    // Create-only oleh siswa aktif members; Baca oleh guru atau pemilik; Update dan delete ditolak
+    match /attempts/{id} {
+      // Pembacaan dokumen tunggal (get): Guru atau Siswa Handout aktif pemilik dokumen
+      // resource == null diizinkan untuk siswa handout aktif guna mendukung idempotensi saveAttempt()
+      allow get: if isTeacher() ||
+                    (isHandoutStudent() && (resource == null || resource.data.ownerId == request.auth.uid));
+
+      // Pembacaan kueri daftar (list): Guru membaca seluruh kelas, Siswa Handout wajib filter ownerId
+      allow list: if isTeacher() ||
+                     (isHandoutStudent() && resource.data.ownerId == request.auth.uid);
+
+      // Pembuatan dokumen baru: Wajib siswa handout aktif & skema tervalidasi attemptContract.js
+      allow create: if isHandoutStudent() && validAttempt(id);
+
+      // Update dan delete ditolak mutlak
+      allow update, delete: if false;
+    }
+
   }
 }
-

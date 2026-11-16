@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
-import { getCurrentSession, subscribeAuthState } from '../../services/authService.js';
+import { getCurrentSession, subscribeAuthState, logoutUser } from '../../services/authService.js';
+import { isConfigured } from '../../services/cloudClient.js';
 import './Navbar.css';
 
 /**
@@ -7,6 +8,7 @@ import './Navbar.css';
  * Komponen navigasi utama REAKSI LAB
  * Mendukung desktop dan tampilan mobile dengan drawer responsif,
  * indikator tema, progres belajar, serta status autentikasi siswa/guru
+ * Sesuai spesifikasi PRD.md, AGENT.md, dan DATABASE.md
  */
 export default function Navbar({
   activePage = 'beranda',
@@ -40,6 +42,22 @@ export default function Navbar({
   const handleNavClick = (pageId) => {
     if (onNavigate) {
       onNavigate(pageId);
+    }
+    setMobileMenuOpen(false);
+  };
+
+  const handleOpenAuth = (mode = 'login') => {
+    if (onOpenAuthModal) {
+      onOpenAuthModal(mode);
+    }
+    setMobileMenuOpen(false);
+  };
+
+  const handleQuickLogout = async () => {
+    try {
+      await logoutUser();
+    } catch (err) {
+      console.warn('[Navbar] Gagal logout:', err);
     }
     setMobileMenuOpen(false);
   };
@@ -100,7 +118,7 @@ export default function Navbar({
           </ul>
         </nav>
 
-        {/* Action Controls: Progress Badge + Auth Pill + Theme Toggle + Mobile Menu Button */}
+        {/* Action Controls: Progress Badge + Auth Actions + Theme Toggle + Mobile Menu Button */}
         <div className="navbar-actions">
           {/* Quick Progress Indicator */}
           <div
@@ -115,21 +133,62 @@ export default function Navbar({
             <span className="progress-text">{overallProgress}% Selesai</span>
           </div>
 
-          {/* User Account / Auth Trigger */}
-          <button
-            id="auth-status-btn"
-            className={`navbar-auth-btn ${session.user ? 'logged-in' : 'guest'}`}
-            onClick={onOpenAuthModal}
-            title={session.user ? `Terhubung sebagai ${session.alias || session.user.email}` : 'Masuk Akun Cloud'}
-            aria-label="Manajemen Akun dan Sinkronisasi"
-          >
-            <span className="auth-user-icon">
-              {session.role === 'teacher' ? '👨‍🏫' : session.role === 'student' ? '🎓' : '👤'}
-            </span>
-            <span className="auth-btn-label">
-              {session.user ? (session.alias || 'Akun') : 'Masuk'}
-            </span>
-          </button>
+          {/* User Account / Auth Actions (Hanya tampil jika Firebase terkonfigurasi) */}
+          {isConfigured && (
+            <div className="navbar-auth-group">
+              {session.user ? (
+                /* Kondisi Login: Tampilkan Nama/Alias dan Tombol Keluar */
+                <>
+                  <button
+                    id="auth-profile-btn"
+                    className="navbar-auth-btn logged-in"
+                    onClick={() => handleOpenAuth('login')}
+                    title={`Terhubung sebagai ${session.alias || session.user.email} (${session.accessStatus})`}
+                    aria-label={`Akun: ${session.alias || session.user.email}`}
+                  >
+                    <span className="auth-user-icon" aria-hidden="true">
+                      {session.role === 'teacher' ? '👨‍🏫' : session.role === 'student' ? '🎓' : '👤'}
+                    </span>
+                    <span className="auth-btn-label">
+                      {session.alias || session.user.email?.split('@')[0] || 'Akun'}
+                    </span>
+                  </button>
+
+                  <button
+                    id="auth-logout-btn"
+                    className="navbar-btn-logout"
+                    onClick={handleQuickLogout}
+                    title="Keluar dari akun"
+                    aria-label="Keluar dari akun"
+                  >
+                    Keluar
+                  </button>
+                </>
+              ) : (
+                /* Kondisi Logout (Tamu): Tampilkan Tombol Masuk dan Daftar */
+                <>
+                  <button
+                    id="auth-login-btn"
+                    className="navbar-btn-login"
+                    onClick={() => handleOpenAuth('login')}
+                    title="Masuk ke Akun Cloud"
+                    aria-label="Masuk ke Akun"
+                  >
+                    Masuk
+                  </button>
+                  <button
+                    id="auth-register-btn"
+                    className="navbar-btn-register"
+                    onClick={() => handleOpenAuth('register')}
+                    title="Daftar Akun Siswa Baru"
+                    aria-label="Daftar Akun Baru"
+                  >
+                    Daftar
+                  </button>
+                </>
+              )}
+            </div>
+          )}
 
           {/* Theme Toggle */}
           {onToggleTheme && (
@@ -199,6 +258,50 @@ export default function Navbar({
               })}
             </ul>
           </nav>
+
+          {/* Mobile Auth Actions */}
+          {isConfigured && (
+            <div className="mobile-auth-section">
+              {session.user ? (
+                <div className="mobile-user-row">
+                  <div
+                    className="mobile-user-info"
+                    onClick={() => handleOpenAuth('login')}
+                    role="button"
+                    tabIndex={0}
+                  >
+                    <span className="auth-user-icon">
+                      {session.role === 'teacher' ? '👨‍🏫' : session.role === 'student' ? '🎓' : '👤'}
+                    </span>
+                    <div className="mobile-user-texts">
+                      <strong className="mobile-user-name">
+                        {session.alias || session.user.email?.split('@')[0]}
+                      </strong>
+                      <span className="mobile-user-status">{session.accessStatus}</span>
+                    </div>
+                  </div>
+                  <button className="btn-sm btn-danger-outline" onClick={handleQuickLogout}>
+                    Keluar
+                  </button>
+                </div>
+              ) : (
+                <div className="mobile-auth-actions-grid">
+                  <button
+                    className="btn btn-secondary w-full"
+                    onClick={() => handleOpenAuth('login')}
+                  >
+                    Masuk
+                  </button>
+                  <button
+                    className="btn btn-primary w-full"
+                    onClick={() => handleOpenAuth('register')}
+                  >
+                    Daftar Akun
+                  </button>
+                </div>
+              )}
+            </div>
+          )}
         </div>
       )}
     </header>

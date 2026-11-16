@@ -53,6 +53,13 @@
 
   Keadaan kuis yang sedang berjalan hanya lokal dan **tidak pernah dikirim ke cloud**. Pilihan yang belum dikirim dengan "Periksa Jawaban" tidak disimpan sebagai jawaban (AGENT §7.4).
 - Profil minimum: ID provider (`uid`) dan `alias` dari `roster`. Tidak ada email, nomor telepon, atau data pribadi lain di dokumen hasil (PRD §16).
+- Permohonan pendaftaran akun, koleksi `registrations/{uid}`: `{ name, kelas, status, createdAt }`.
+  - Dibuat mandiri oleh siswa saat mendaftar akun (Email + Password).
+  - `name`: string 2-80 karakter (nama lengkap atau panggilan/inisial siswa).
+  - `kelas`: string 1-20 karakter (contoh `"XI-1"`, `"XI-2"` dari konstanta pilihan kelas; hanya informasi dan tidak dipakai untuk otorisasi).
+  - `status`: `"pending"` (status awal pengajuan; persetujuan akses kelas dilakukan pengelola dengan menambahkan `roster/{uid}` aktif).
+  - `createdAt`: server timestamp saat pendaftaran diajukan.
+  - Nama dan kelas hanya disimpan di dokumen `registrations` ini, bukan di dokumen hasil (`results`).
 - Riwayat, koleksi `results/{attemptId}`: `id`, `ownerId`, `alias`, `moduleId`, `activityId`, `questionVersion`, `kind`, `answers` (peta ID soal ke pilihan/isian), `score`, `completedAt`, `receivedAt`.
   - `kind`: `quiz` | `lab-observation` | `module-complete`.
   - `activityId`: ID kategori kuis, atau `experimentId` untuk lab.
@@ -196,11 +203,26 @@ service cloud.firestore {
         && d.score is number
       );
     }
+    function validRegistration(uid) {
+      let d = request.resource.data;
+      return d.keys().hasOnly(['name', 'kelas', 'status', 'createdAt'])
+        && request.auth.uid == uid
+        && d.name is string && d.name.size() >= 2 && d.name.size() <= 80
+        && d.kelas is string && d.kelas.size() >= 1 && d.kelas.size() <= 20
+        && d.status == 'pending'
+        && d.createdAt == request.time
+        && !exists(/databases/$(db)/documents/registrations/$(uid));
+    }
 
     match /config/{doc} { allow read, write: if false; }
     match /roster/{uid} {
       allow read: if signedIn() && (request.auth.uid == uid || isTeacher());
       allow write: if false;
+    }
+    match /registrations/{uid} {
+      allow read: if signedIn() && (request.auth.uid == uid || isTeacher());
+      allow create: if signedIn() && validRegistration(uid);
+      allow update, delete: if false;
     }
     match /results/{attemptId} {
       allow read: if isTeacher() ||

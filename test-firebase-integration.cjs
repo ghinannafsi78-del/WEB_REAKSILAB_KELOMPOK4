@@ -60,6 +60,8 @@ runTest('Skenario 1: File .env.example dan firestore.rules tersedia dan valid', 
   assert(rulesContent.includes('function isStudent()'), 'Memuat helper isStudent()');
   assert(rulesContent.includes('function validCommon('), 'Memuat validCommon()');
   assert(rulesContent.includes('function validQuiz()'), 'Memuat validQuiz()');
+  assert(rulesContent.includes('function validRegistration(uid)'), 'Memuat helper validRegistration()');
+  assert(rulesContent.includes('match /registrations/{uid}'), 'Memuat rules match registrations/{uid}');
   assert(rulesContent.includes('allow update, delete: if false;'), 'Koleksi results create-only');
 });
 
@@ -216,6 +218,233 @@ runTest('Skenario 8: Payload kuis tidak memuat correctAnswer atau explanation', 
   assert(!content.includes('correctAnswer:'), 'Tidak mengirim correctAnswer');
   assert(!content.includes('explanation:'), 'Tidak mengirim explanation');
   assert(content.includes('answers: item.answers'), 'Hanya mengirim peta jawaban siswa');
+});
+
+// ---------------------------------------------------------
+// SKENARIO 9: Validasi Aturan Firestore untuk registrations/{uid}
+// ---------------------------------------------------------
+runTest('Skenario 9: Kontrak dan Aturan Keamanan registrations/{uid}', () => {
+  const rulesPath = path.join(__dirname, 'firestore.rules');
+  const content = fs.readFileSync(rulesPath, 'utf8');
+
+  assert(content.includes("d.keys().hasOnly(['name', 'kelas', 'status', 'createdAt'])"), 'Keys registrations dibatasi');
+  assert(content.includes("request.auth.uid == uid"), 'docId harus sama dengan auth.uid');
+  assert(content.includes("d.name is string && d.name.size() >= 2 && d.name.size() <= 80"), 'Name string 2-80 karakter');
+  assert(content.includes("d.kelas is string && d.kelas.size() >= 1 && d.kelas.size() <= 20"), 'Kelas string 1-20 karakter');
+  assert(content.includes("d.status == 'pending'"), 'Status awal harus pending');
+  assert(content.includes("d.createdAt == request.time"), 'createdAt harus serverTimestamp');
+  assert(content.includes("!exists(/databases/$(db)/documents/registrations/$(uid))"), 'Tidak boleh menimpa dokumen registrations yang ada');
+  assert(content.includes("match /registrations/{uid}"), 'Ada blok match registrations');
+});
+
+// ---------------------------------------------------------
+// SKENARIO 10: Validasi Sisi Klien Pendaftaran Siswa
+// ---------------------------------------------------------
+runTest('Skenario 10: Logika Validasi Form Registrasi & Dropdown Kelas', () => {
+  const authServicePath = path.join(__dirname, 'src', 'services', 'authService.js');
+  const content = fs.readFileSync(authServicePath, 'utf8');
+
+  assert(content.includes("export const CLASS_OPTIONS = ['XI-1', 'XI-2']"), 'CLASS_OPTIONS diekspor');
+  assert(content.includes("cleanName.length < 2 || cleanName.length > 80"), 'Validasi panjang nama 2-80');
+  assert(content.includes("password.length < 8"), 'Validasi panjang sandi minimal 8 karakter');
+  assert(content.includes("password === cleanEmail"), 'Validasi sandi tidak boleh sama dengan email');
+  assert(content.includes("status: 'pending'"), 'Registrasi menetapkan status pending');
+});
+
+// ---------------------------------------------------------
+// SKENARIO 11: Pemetaan Status Akses Sesi Pengguna
+// ---------------------------------------------------------
+runTest('Skenario 11: Status Akses Sesi (Anggota kelas, Menunggu persetujuan, Belum terdaftar)', () => {
+  const authServicePath = path.join(__dirname, 'src', 'services', 'authService.js');
+  const content = fs.readFileSync(authServicePath, 'utf8');
+
+  assert(content.includes("`Anggota kelas: ${studentAlias}`"), 'Status saat di roster dan active');
+  assert(content.includes("'Menunggu persetujuan'"), 'Status saat registrations berstatus pending');
+  assert(content.includes("'Akun belum terdaftar di kelas; cloud kelas belum diizinkan'"), 'Status saat akun belum terdaftar');
+  assert(content.includes("submitRegistrationDoc"), 'Fungsi kirim ulang data pendaftaran tersedia');
+});
+
+// ---------------------------------------------------------
+// SKENARIO 12: Fitur Lupa Password dengan Pesan Netral
+// ---------------------------------------------------------
+runTest('Skenario 12: Pemulihan Sandi (sendPasswordResetEmail & pesan netral)', () => {
+  const authServicePath = path.join(__dirname, 'src', 'services', 'authService.js');
+  const authModalPath = path.join(__dirname, 'src', 'components', 'auth', 'AuthModal.jsx');
+  const authServiceContent = fs.readFileSync(authServicePath, 'utf8');
+  const authModalContent = fs.readFileSync(authModalPath, 'utf8');
+
+  assert(authServiceContent.includes('sendPasswordResetEmail'), 'Menggunakan sendPasswordResetEmail');
+  assert(authServiceContent.includes('Jika email terdaftar, tautan reset telah dikirim.'), 'Pesan reset selalu netral');
+  assert(authModalContent.includes('cooldownSeconds'), 'AuthModal memiliki mekanisme jeda hitung mundur 60 detik');
+  assert(authModalContent.includes('setCooldownSeconds(60)'), 'Jeda 60 detik diaktifkan setelah kirim');
+});
+
+// ---------------------------------------------------------
+// SKENARIO 13: Keamanan Pesan Login dan Penanganan Password
+// ---------------------------------------------------------
+runTest('Skenario 13: Pesan login seragam (tidak membocorkan email) & pembersihan password', () => {
+  const authServicePath = path.join(__dirname, 'src', 'services', 'authService.js');
+  const authModalPath = path.join(__dirname, 'src', 'components', 'auth', 'AuthModal.jsx');
+  const authServiceContent = fs.readFileSync(authServicePath, 'utf8');
+  const authModalContent = fs.readFileSync(authModalPath, 'utf8');
+
+  assert(authServiceContent.includes("message = 'Email atau password salah.'"), 'Pesan kesalahan login tidak membedakan user vs pass');
+  assert(authModalContent.includes("setPassword('')"), 'State password langsung dikosongkan setelah submit');
+  assert(authModalContent.includes('setShowPassword'), 'Tersedia toggle tampilkan/sembunyikan password');
+});
+
+// ---------------------------------------------------------
+// SKENARIO 14-19: PROSEDUR 4-05 TAHAP 2 - DUAL-READ ROLE RESOLVER
+// ---------------------------------------------------------
+
+// Helper Mock Role Resolver (Identik dengan logika resolveUserRole di src/services/authService.js)
+async function mockResolveUserRole(user, store) {
+  if (!user || !user.uid) {
+    return { role: 'guest', active: false, error: null };
+  }
+  const uid = user.uid;
+
+  // 1. Guru Dual-Read
+  const rolesData = store['config/roles'];
+  if (rolesData instanceof Error && rolesData.code !== 'permission-denied') {
+    // non-permission error diabaikan atau ditangkap
+  } else if (rolesData && !(rolesData instanceof Error) && rolesData.teacherUid === uid) {
+    return { role: 'teacher', alias: 'Guru Pengampu', active: true, error: null };
+  }
+
+  const settingsData = store['settings/classroom'];
+  if (settingsData && !(settingsData instanceof Error) && settingsData.teacherUid === uid) {
+    return { role: 'teacher', alias: 'Guru Pengampu', active: true, error: null };
+  }
+
+  // 2. Siswa Dual-Read
+  const rosterData = store[`roster/${uid}`];
+  if (rosterData instanceof Error) {
+    if (['unavailable', 'network-request-failed', 'permission-denied'].includes(rosterData.code)) {
+      return { role: 'verification_failed', active: false, error: rosterData.message };
+    }
+  } else if (rosterData) {
+    if (rosterData.active === true) {
+      return { role: 'student', alias: rosterData.alias || `Siswa-${uid}`, active: true, error: null };
+    } else {
+      return { role: 'unregistered', active: false, error: 'Akun nonaktif' };
+    }
+  }
+
+  const memberData = store[`members/${uid}`];
+  if (memberData instanceof Error) {
+    if (['unavailable', 'network-request-failed', 'permission-denied'].includes(memberData.code)) {
+      return { role: 'verification_failed', active: false, error: memberData.message };
+    }
+  } else if (memberData) {
+    if (memberData.active !== false) {
+      return { role: 'student', alias: memberData.alias || memberData.name || `Siswa-${uid}`, active: true, error: null };
+    }
+  }
+
+  // 3. Pending
+  const regData = store[`registrations/${uid}`];
+  if (regData instanceof Error) {
+    if (['unavailable', 'network-request-failed'].includes(regData.code)) {
+      return { role: 'verification_failed', active: false, error: regData.message };
+    }
+  } else if (regData && regData.status === 'pending') {
+    return { role: 'pending_registration', active: false, error: null };
+  }
+
+  // 4. Unregistered
+  return { role: 'unregistered', active: false, error: null };
+}
+
+runTest('Skenario 14: Role Resolver - Guru pada struktur lama (config/roles) dan handout (settings/classroom)', async () => {
+  const teacherA = { uid: 'teacher_old_01' };
+  const storeA = { 'config/roles': { teacherUid: 'teacher_old_01' } };
+  const resA = await mockResolveUserRole(teacherA, storeA);
+  assert.strictEqual(resA.role, 'teacher');
+  assert.strictEqual(resA.active, true);
+
+  const teacherB = { uid: 'teacher_handout_02' };
+  const storeB = { 'settings/classroom': { teacherUid: 'teacher_handout_02' } };
+  const resB = await mockResolveUserRole(teacherB, storeB);
+  assert.strictEqual(resB.role, 'teacher');
+  assert.strictEqual(resB.active, true);
+});
+
+runTest('Skenario 15: Role Resolver - Siswa pada roster/{uid} dan members/{uid}', async () => {
+  const studentOld = { uid: 'student_old_01' };
+  const storeOld = { 'roster/student_old_01': { alias: 'XI-01', active: true } };
+  const resOld = await mockResolveUserRole(studentOld, storeOld);
+  assert.strictEqual(resOld.role, 'student');
+  assert.strictEqual(resOld.alias, 'XI-01');
+  assert.strictEqual(resOld.active, true);
+
+  const studentHandout = { uid: 'student_handout_02' };
+  const storeHandout = { 'members/student_handout_02': { alias: 'Budi Handout', active: true } };
+  const resHandout = await mockResolveUserRole(studentHandout, storeHandout);
+  assert.strictEqual(resHandout.role, 'student');
+  assert.strictEqual(resHandout.alias, 'Budi Handout');
+  assert.strictEqual(resHandout.active, true);
+});
+
+runTest('Skenario 16: Role Resolver - Siswa pending dan pengguna tidak terdaftar', async () => {
+  const pendingUser = { uid: 'pending_01' };
+  const storePending = { 'registrations/pending_01': { status: 'pending', name: 'Calon Siswa' } };
+  const resPending = await mockResolveUserRole(pendingUser, storePending);
+  assert.strictEqual(resPending.role, 'pending_registration');
+  assert.strictEqual(resPending.active, false);
+
+  const stranger = { uid: 'stranger_99' };
+  const resStranger = await mockResolveUserRole(stranger, {});
+  assert.strictEqual(resStranger.role, 'unregistered');
+  assert.strictEqual(resStranger.active, false);
+});
+
+runTest('Skenario 17: Role Resolver - Penanganan galat (permission-denied & network) mengembalikan verification_failed', async () => {
+  const networkUser = { uid: 'user_net_fail' };
+  const netErr = new Error('Koneksi terputus');
+  netErr.code = 'unavailable';
+  const storeNet = { 'roster/user_net_fail': netErr };
+  const resNet = await mockResolveUserRole(networkUser, storeNet);
+  assert.strictEqual(resNet.role, 'verification_failed', 'Network error harus verification_failed, bukan unregistered');
+  assert.strictEqual(resNet.active, false);
+
+  const permUser = { uid: 'user_perm_denied' };
+  const permErr = new Error('Missing or insufficient permissions');
+  permErr.code = 'permission-denied';
+  const storePerm = { 'roster/user_perm_denied': permErr };
+  const resPerm = await mockResolveUserRole(permUser, storePerm);
+  assert.strictEqual(resPerm.role, 'verification_failed', 'Permission denied pada keanggotaan harus verification_failed');
+});
+
+runTest('Skenario 18: Prioritas Guru - UID yang sama tidak memperoleh role guru dan siswa sekaligus', async () => {
+  const dualUid = 'user_multi_roles';
+  // Dokumen ada di config/roles (guru) DAN di roster (siswa)
+  const storeDual = {
+    'config/roles': { teacherUid: dualUid },
+    [`roster/${dualUid}`]: { alias: 'Siswa Roster', active: true },
+    [`members/${dualUid}`]: { alias: 'Siswa Member', active: true },
+  };
+  const resDual = await mockResolveUserRole({ uid: dualUid }, storeDual);
+  assert.strictEqual(resDual.role, 'teacher', 'Guru harus diprioritaskan sebelum siswa');
+  assert.notStrictEqual(resDual.role, 'student', 'Tidak boleh merangkap role student');
+});
+
+runTest('Skenario 19: Unifikasi Antarmodul - authService.js dan firebaseService.js saling terintegrasi', () => {
+  const authServicePath = path.join(__dirname, 'src', 'services', 'authService.js');
+  const firebaseServicePath = path.join(__dirname, 'src', 'lib', 'firebaseService.js');
+  const authContent = fs.readFileSync(authServicePath, 'utf8');
+  const fbContent = fs.readFileSync(firebaseServicePath, 'utf8');
+
+  // authService mengekspor resolveUserRole dan verifyUserRole
+  assert(authContent.includes('export async function resolveUserRole('), 'authService mengekspor resolveUserRole');
+  assert(authContent.includes('export async function verifyUserRole('), 'authService mengekspor verifyUserRole');
+  assert(authContent.includes("'settings', 'classroom'"), 'authService mendukung settings/classroom');
+  assert(authContent.includes("'members', uid"), 'authService mendukung members/{uid}');
+
+  // firebaseService mengimpor verifyUserRole
+  assert(fbContent.includes('verifyUserRole'), 'firebaseService mengimpor verifyUserRole');
+  assert(fbContent.includes('teacher: session.role === \'teacher\''), 'firebaseService menyelaraskan status teacher');
+  assert(fbContent.includes('member: session.role === \'student\''), 'firebaseService menyelaraskan status member');
 });
 
 console.log(`\n========================================================================`);

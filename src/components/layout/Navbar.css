@@ -259,7 +259,66 @@
 }
 
 
-/* Navbar Auth Button */
+/* Navbar Auth Button & Group */
+.navbar-auth-group {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.navbar-btn-login {
+  padding: 0.4rem 0.85rem;
+  border-radius: var(--radius-md);
+  background: var(--color-bg-card);
+  border: 1px solid var(--color-border-subtle);
+  color: var(--color-text-secondary);
+  font-size: 0.82rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.navbar-btn-login:hover {
+  color: var(--color-text-primary);
+  border-color: var(--lab-cyan);
+  background: var(--color-bg-card-hover);
+}
+
+.navbar-btn-register {
+  padding: 0.4rem 0.85rem;
+  border-radius: var(--radius-md);
+  background: var(--lab-cyan);
+  border: 1px solid var(--lab-cyan);
+  color: #0b1120;
+  font-size: 0.82rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.navbar-btn-register:hover {
+  background: #38bdf8;
+  border-color: #38bdf8;
+  box-shadow: 0 0 10px rgba(6, 182, 212, 0.3);
+}
+
+.navbar-btn-logout {
+  padding: 0.4rem 0.75rem;
+  border-radius: var(--radius-md);
+  background: transparent;
+  border: 1px solid rgba(239, 68, 68, 0.35);
+  color: #f87171;
+  font-size: 0.8rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.navbar-btn-logout:hover {
+  background: rgba(239, 68, 68, 0.15);
+  border-color: #ef4444;
+}
+
 .navbar-auth-btn {
   display: flex;
   align-items: center;
@@ -289,4 +348,48 @@
 
 .auth-user-icon {
   font-size: 1rem;
+}
+
+/* Mobile Drawer Auth Section */
+.mobile-auth-section {
+  margin-top: 1.25rem;
+  padding-top: 1rem;
+  border-top: 1px solid var(--color-border-subtle);
+}
+
+.mobile-auth-actions-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.75rem;
+}
+
+.mobile-user-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.5rem 0.25rem;
+}
+
+.mobile-user-info {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  cursor: pointer;
+}
+
+.mobile-user-texts {
+  display: flex;
+  flex-direction: column;
+  text-align: left;
+}
+
+.mobile-user-name {
+  font-size: 0.92rem;
+  color: var(--color-text-primary);
+}
+
+.mobile-user-status {
+  font-size: 0.72rem;
+  color: var(--color-text-muted);
 }
