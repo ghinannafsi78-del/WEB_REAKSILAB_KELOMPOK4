@@ -1,25 +1,16 @@
-import { initializeApp } from "firebase/app";
-import { getAuth, GoogleAuthProvider, signInWithPopup, signOut,
-  setPersistence, browserSessionPersistence } from "firebase/auth";
-import { getFirestore, doc, getDocFromServer, setDoc, serverTimestamp,
+import { GoogleAuthProvider, signInWithPopup, signOut,
+  setPersistence, browserLocalPersistence } from "firebase/auth";
+import { doc, getDocFromServer, setDoc, serverTimestamp,
   collection, query, where, getDocsFromServer } from "firebase/firestore";
 import { payloadOf, sameAttempt } from "./attemptContract.js";
 import { verifyUserRole } from "../services/authService.js";
+import { auth, db, isConfigured } from "../services/cloudClient.js";
 
-let handles;
 function clients() {
-  if (!handles) {
-    const config = {
-      apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
-      authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
-      projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID,
-      appId: import.meta.env.VITE_FIREBASE_APP_ID
-    };
-    if (Object.values(config).some(v => !v)) throw new Error("Konfigurasi login/cloud belum lengkap");
-    const app = initializeApp(config);
-    handles = { auth: getAuth(app), db: getFirestore(app) };
+  if (!isConfigured || !auth || !db) {
+    throw new Error("Konfigurasi login/cloud belum lengkap");
   }
-  return handles;
+  return { auth, db };
 }
 
 export async function getIdentity() {
@@ -30,8 +21,10 @@ export async function getIdentity() {
 
 export async function login() {
   const { auth } = clients();
-  await setPersistence(auth, browserSessionPersistence);
-  await signInWithPopup(auth, new GoogleAuthProvider());
+  await setPersistence(auth, browserLocalPersistence).catch(() => {});
+  const provider = new GoogleAuthProvider();
+  provider.setCustomParameters({ prompt: 'select_account' });
+  await signInWithPopup(auth, provider);
   return getIdentity();
 }
 

@@ -19,6 +19,7 @@ import { getStoredProgress } from '../../services/progressService.js';
 import { getStoredObservations } from '../../services/observationService.js';
 import { isConfigured } from '../../services/cloudClient.js';
 import { login as googleLogin, getAccess } from '../../lib/firebaseService.js';
+import { readScope } from '../../lib/localStore.js';
 import './AuthModal.css';
 
 /**
@@ -116,10 +117,19 @@ export default function AuthModal({
 
   // Periksa apakah ada data mode tamu yang layak ditawarkan untuk migrasi saat siswa login
   const checkForGuestData = () => {
+    let hasLocalScopeRecords = false;
+    try {
+      const guestScope = readScope('guest');
+      hasLocalScopeRecords = Object.values(guestScope.records || {}).some((r) => r.status === 'local');
+    } catch {
+      // Abaikan jika store belum terisi
+    }
+
     const guestProg = getStoredProgress();
     const guestObs = getStoredObservations();
 
     const hasGuestRecords =
+      hasLocalScopeRecords ||
       (guestProg.quizAttempts && guestProg.quizAttempts.length > 0) ||
       (guestObs && guestObs.length > 0);
 
@@ -239,18 +249,28 @@ export default function AuthModal({
         checkForGuestData();
       }
     } catch (err) {
-      // 3. Tangani kondisi popup dibatalkan, ditutup pengguna, diblokir browser, atau kegagalan jaringan
+      // 3. Tangani kondisi popup dibatalkan, ditutup pengguna, diblokir browser, atau kegagalan konfigurasi/jaringan
       if (
         err.code === 'auth/popup-closed-by-user' ||
         err.code === 'auth/cancelled-popup-request'
       ) {
-        setErrorMessage('Proses masuk dengan Google dibatalkan.');
+        setErrorMessage('Login dibatalkan.');
       } else if (err.code === 'auth/popup-blocked') {
-        setErrorMessage('Jendela sembul (popup) Google diblokir oleh peramban. Mohon izinkan popup untuk situs ini.');
+        setErrorMessage('Jendela login tidak dapat dibuka. Mohon izinkan jendela sembul (popup) pada peramban Anda.');
       } else if (err.code === 'auth/network-request-failed') {
-        setErrorMessage('Koneksi jaringan terputus saat menghubungi Google. Silakan periksa koneksi internet Anda.');
+        setErrorMessage('Koneksi internet bermasalah. Silakan periksa koneksi Anda.');
+      } else if (err.code === 'auth/unauthorized-domain') {
+        setErrorMessage('Domain situs ini belum diizinkan untuk login Google di Firebase Console.');
+      } else if (err.code === 'auth/operation-not-allowed') {
+        setErrorMessage('Metode login Google belum diaktifkan pada pengaturan Firebase.');
+      } else if (
+        err.code === 'auth/invalid-api-key' ||
+        err.code === 'auth/api-key-not-valid' ||
+        err.message?.includes('Konfigurasi login/cloud belum lengkap')
+      ) {
+        setErrorMessage('Layanan login belum dikonfigurasi dengan benar.');
       } else {
-        setErrorMessage(err.message || 'Gagal melakukan autentikasi dengan akun Google.');
+        setErrorMessage('Terjadi kendala saat masuk. Silakan coba kembali.');
       }
     } finally {
       setIsGoogleLoading(false);

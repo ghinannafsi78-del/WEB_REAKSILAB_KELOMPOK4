@@ -2,7 +2,8 @@ import { useState, useEffect } from 'react';
 import { MODULES_DATA } from '../data/modules.js';
 import { EXPERIMENTS_DATA } from '../data/experiments.js';
 import { getCurrentSession, subscribeAuthState } from '../services/authService.js';
-import { getSyncStats } from '../services/syncService.js';
+import { getSyncStats, subscribeSyncStatus } from '../services/syncService.js';
+import { readScope } from '../lib/localStore.js';
 import './ProgressPage.css';
 
 /**
@@ -21,13 +22,32 @@ export default function ProgressPage({
   resetProgress,
 }) {
   const [session, setSession] = useState(getCurrentSession());
+  const [, setSyncTick] = useState(0);
 
   useEffect(() => {
-    return subscribeAuthState(setSession);
+    const unsubAuth = subscribeAuthState(setSession);
+    const unsubSync = subscribeSyncStatus(() => setSyncTick((v) => v + 1));
+    return () => {
+      unsubAuth();
+      unsubSync();
+    };
   }, []);
 
   const completedModulesCount = progress?.completedModules?.length || 0;
   const completedExpCount = progress?.completedExperiments?.length || 0;
+
+  // Baca rekaman attempt scoped dari localStore
+  const currentUid = session.user?.uid || 'guest';
+  const scope = readScope(currentUid);
+  const scopeAttempts = Object.values(scope.records || {}).map((r) => ({
+    id: r.attempt.id,
+    activityId: r.attempt.activityId,
+    kind: r.attempt.kind,
+    score: r.attempt.score,
+    completedAt: r.attempt.completedAt,
+    status: r.status, // 'local' | 'pending' | 'sent'
+  })).sort((a, b) => new Date(b.completedAt) - new Date(a.completedAt));
+
   const attempts = progress?.quizAttempts || [];
 
   const handleReset = () => {
@@ -158,15 +178,68 @@ export default function ProgressPage({
         </section>
       </div>
 
-      {/* Riwayat Percobaan Kuis */}
+      {/* Riwayat Hasil Belajar Siswa (Kuis & Observasi Lab) */}
       <section className="quiz-history-card" aria-labelledby="history-title">
-        <h3 id="history-title">Riwayat Percobaan Kuis</h3>
-        {attempts.length === 0 ? (
+        <h3 id="history-title">Riwayat Hasil Belajar (Kuis & Observasi Lab)</h3>
+        {scopeAttempts.length === 0 && attempts.length === 0 ? (
           <div className="empty-history-box">
-            <p>Belum ada riwayat kuis yang tersimpan. Coba kerjakan kuis untuk menguji pemahaman kamu!</p>
+            <p>Belum ada riwayat hasil belajar yang tersimpan. Coba kerjakan kuis atau lakukan uji lab untuk menguji pemahaman kamu!</p>
             <button className="btn btn-primary" onClick={() => onNavigate('kuis')}>
               Mulai Kuis Sekarang
             </button>
+          </div>
+        ) : scopeAttempts.length > 0 ? (
+          <div className="table-responsive">
+            <table className="history-table">
+              <thead>
+                <tr>
+                  <th>Tanggal</th>
+                  <th>Aktivitas</th>
+                  <th>Jenis</th>
+                  <th>Skor</th>
+                  <th>Status Penyimpanan</th>
+                </tr>
+              </thead>
+              <tbody>
+                {scopeAttempts.map((att) => (
+                  <tr key={att.id}>
+                    <td>{new Date(att.completedAt).toLocaleDateString('id-ID', { hour: '2-digit', minute: '2-digit' })}</td>
+                    <td>
+                      <strong>
+                        {att.kind === 'observation' ? `Observasi Lab (${att.activityId})` : 'Kuis Evaluasi Formatif'}
+                      </strong>
+                    </td>
+                    <td>
+                      <span className="badge badge-cyan" style={{ fontSize: '0.75rem' }}>
+                        {att.kind}
+                      </span>
+                    </td>
+                    <td>
+                      <span className={`score-pill ${att.score >= 75 ? 'pass' : 'retry'}`}>
+                        {att.score} / 100
+                      </span>
+                    </td>
+                    <td>
+                      {att.status === 'sent' && (
+                        <span className="score-pill pass" title="Terkonfirmasi tersimpan di Cloud Firestore">
+                          ✓ Terkirim ke Cloud
+                        </span>
+                      )}
+                      {att.status === 'pending' && (
+                        <span className="score-pill retry" title="Tersimpan di perangkat; menunggu pengiriman ke Cloud">
+                          ⏳ Menunggu Kirim
+                        </span>
+                      )}
+                      {att.status === 'local' && (
+                        <span className="score-pill" title="Mode Tamu: Tersimpan di penyimpanan lokal browser">
+                          💾 Mode Tamu (Lokal)
+                        </span>
+                      )}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </div>
         ) : (
           <div className="table-responsive">

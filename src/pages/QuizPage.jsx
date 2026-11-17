@@ -125,36 +125,39 @@ export default function QuizPage({ onNavigate, onQuizCompleted }) {
         correctAnswers: totalCorrect,
       });
 
-      // 2. Jika dalam Mode Akun (siswa terdaftar dan aktif), enqueue ke antrean Firestore
-      if (authSession.active && authSession.user?.uid) {
-        try {
-          const finalAnswers = {
-            ...userAnswersMap,
-            [currentQ.id]: selectedOpt,
-          };
-
-          const enqueueRes = await enqueueResult({
-            moduleId: 'modul-01',
-            activityId: 'quiz-formatif-laju',
-            questionVersion: QUESTION_BANK_VERSION,
-            kind: 'quiz',
-            answers: finalAnswers,
-            score: finalScorePercent,
-            totalQuestions: QUIZ_QUESTIONS.length,
-            correctAnswers: totalCorrect,
-            incorrectAnswers: QUIZ_QUESTIONS.length - totalCorrect,
-            completedAt: new Date().toISOString(),
-          });
-
-          if (enqueueRes.success) {
-            setCloudSyncStatus('cloud');
-          }
-        } catch (err) {
-          console.warn('[QuizPage] Gagal mengantrekan hasil kuis ke cloud:', err);
-          setCloudSyncStatus('local-only');
+      // 2. Bentuk objek jawaban per butir (semua nilai string sesuai attemptContract)
+      const rawAnswers = {
+        ...userAnswersMap,
+        [currentQ.id]: selectedOpt,
+      };
+      const finalAnswers = {};
+      QUIZ_QUESTIONS.forEach((q) => {
+        const chosen = rawAnswers[q.id];
+        if (chosen !== undefined && chosen !== null) {
+          finalAnswers[q.id] = String(chosen);
         }
-      } else {
-        setCloudSyncStatus('guest');
+      });
+
+      // 3. Simpan attempt ke sistem attempts (Mode Akun maupun Mode Tamu)
+      try {
+        await enqueueResult({
+          moduleId: 'laju-reaksi',
+          activityId: 'quiz-formatif-laju',
+          questionVersion: QUESTION_BANK_VERSION,
+          kind: 'practice',
+          answers: finalAnswers,
+          score: finalScorePercent,
+          completedAt: new Date().toISOString(),
+        });
+
+        if (authSession.active && authSession.user?.uid) {
+          setCloudSyncStatus('cloud');
+        } else {
+          setCloudSyncStatus('guest');
+        }
+      } catch (err) {
+        console.warn('[QuizPage] Gagal menyimpan attempt kuis:', err);
+        setCloudSyncStatus(authSession.active ? 'local-only' : 'guest');
       }
 
       if (onQuizCompleted) onQuizCompleted();

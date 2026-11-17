@@ -1,7 +1,6 @@
 import { useState } from 'react';
 import { saveObservation, validateObservationData } from '../../services/observationService.js';
 import { enqueueResult } from '../../services/syncService.js';
-import { getCurrentSession } from '../../services/authService.js';
 import './ObservationForm.css';
 
 /**
@@ -90,41 +89,42 @@ export default function ObservationForm({
         onObservationSaved(result.observation);
       }
 
-      // Sinkronkan ke cloud jika siswa terautentikasi dan aktif (Mode Akun)
-      const session = getCurrentSession();
-      if (session.active && session.user?.uid) {
+      // Rekam hasil pengamatan ke sistem attempts (Mode Akun maupun Mode Tamu)
+      try {
         enqueueResult({
-          moduleId: 'modul-01',
+          moduleId: 'laju-reaksi',
           activityId: experiment.id,
           questionVersion: 'qb-2026-11-03',
-          kind: 'lab-observation',
+          kind: 'observation',
           answers: {
-            trialNumber: result.observation.trialNumber,
-            recordedCollisionCount: result.observation.machineData.collisionCount,
-            recordedCollisionFrequency: result.observation.machineData.collisionFrequency,
-            recordedEffectiveCollisionCount: result.observation.machineData.effectiveCollisionCount,
-            recordedProductCount: result.observation.machineData.productCount,
-            recordedReactionRate: result.observation.machineData.reactionRate,
-            observationNotes: result.observation.studentInterpretation.observationNotes,
-            analysis: result.observation.studentInterpretation.analysis,
-            conclusion: result.observation.studentInterpretation.conclusion,
+            trialNumber: String(result.observation.trialNumber || 1),
+            recordedCollisionCount: String(result.observation.machineData?.collisionCount ?? 0),
+            recordedCollisionFrequency: String(result.observation.machineData?.collisionFrequency ?? 0),
+            recordedEffectiveCollisionCount: String(result.observation.machineData?.effectiveCollisionCount ?? 0),
+            recordedProductCount: String(result.observation.machineData?.productCount ?? 0),
+            recordedReactionRate: String(result.observation.machineData?.reactionRate ?? 0),
+            observationNotes: String(result.observation.studentInterpretation?.observationNotes || ''),
+            analysis: String(result.observation.studentInterpretation?.analysis || ''),
+            conclusion: String(result.observation.studentInterpretation?.conclusion || ''),
           },
           simulation: {
             simulationResultId: result.observation.id,
             modelVersion: 'sim-1.0',
             parameters: result.observation.observedParameters,
-            duration: result.observation.observedParameters.duration,
-            collisionCount: result.observation.machineData.collisionCount,
-            collisionFrequency: result.observation.machineData.collisionFrequency,
-            effectiveCollisionCount: result.observation.machineData.effectiveCollisionCount,
-            productCount: result.observation.machineData.productCount,
-            reactionRate: result.observation.machineData.reactionRate,
+            duration: result.observation.observedParameters?.duration || 15,
+            collisionCount: result.observation.machineData?.collisionCount || 0,
+            collisionFrequency: result.observation.machineData?.collisionFrequency || 0,
+            effectiveCollisionCount: result.observation.machineData?.effectiveCollisionCount || 0,
+            productCount: result.observation.machineData?.productCount || 0,
+            reactionRate: result.observation.machineData?.reactionRate || 0,
           },
-          score: null,
-          completedAt: result.observation.savedAt,
+          score: 100,
+          completedAt: result.observation.savedAt || new Date().toISOString(),
         }).catch((err) => {
-          console.warn('[ObservationForm] Gagal mengantrekan data pengamatan ke cloud:', err);
+          console.warn('[ObservationForm] Gagal menyimpan data pengamatan:', err);
         });
+      } catch (err) {
+        console.warn('[ObservationForm] Gagal mengantrekan data pengamatan:', err);
       }
     } else {
       setErrors(result.errors || {});

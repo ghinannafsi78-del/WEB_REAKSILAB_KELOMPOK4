@@ -2,11 +2,14 @@
  * services/syncService.js
  * Manajemen antrean hasil belajar, sinkronisasi offline-first ke Cloud Firestore,
  * dan migrasi progres mode tamu ke akun siswa terdaftar.
- * Sesuai spesifikasi DATABASE.md dan PRD Bab 11, 13, & 16
+ * Sesuai spesifikasi DATABASE.md, PRD Bab 11, 13, & 16, serta kontrak Handout Bab 4-7.
  */
 
-import { doc, setDoc, getDoc, serverTimestamp } from 'firebase/firestore';
-import { db, isConfigured } from './cloudClient.js';
+import { payloadOf } from '../lib/attemptContract.js';
+import { readScope, recordAttempt, claimGuest } from '../lib/localStore.js';
+import { syncPending } from '../lib/syncService.js';
+import { saveAttempt } from '../lib/firebaseService.js';
+import { isConfigured } from './cloudClient.js';
 import { getCurrentSession } from './authService.js';
 import { getStoredProgress } from './progressService.js';
 import { getStoredObservations } from './observationService.js';
@@ -34,11 +37,20 @@ export function subscribeSyncStatus(callback) {
 }
 
 /**
- * Membaca antrean dari LocalStorage untuk UID tertentu
+ * Membaca antrean dari LocalStore / LocalStorage untuk UID tertentu
  */
 export function getQueue(uid) {
   if (!uid) return [];
   try {
+    const scope = readScope(uid);
+    const scopeRecords = Object.values(scope.records || {}).map((r) => ({
+      ...r.attempt,
+      status: r.status,
+      receivedAt: r.receivedAt || null,
+    }));
+    if (scopeRecords.length > 0) return scopeRecords;
+
+    // Fallback kompatibilitas jika ada data lama di key prefix
     const raw = localStorage.getItem(`${QUEUE_KEY_PREFIX}${uid}`);
     if (!raw) return [];
     const parsed = JSON.parse(raw);
@@ -50,7 +62,7 @@ export function getQueue(uid) {
 }
 
 /**
- * Menyimpan antrean ke LocalStorage untuk UID tertentu
+ * Menyimpan antrean ke LocalStorage (kompatibilitas backward)
  */
 function saveQueue(uid, queue) {
   if (!uid) return;
@@ -90,57 +102,88 @@ export function saveAccountProgress(uid, data) {
 
 /**
  * Menambahkan item hasil belajar ke dalam antrean sinkronisasi
- * @param {Object} item - Payload hasil belajar (quiz | lab-observation | module-complete)
+ * Sesuai kontrak attemptContract.js:
+ * fields: ["id", "ownerId", "alias", "moduleId", "activityId", "questionVersion", "kind", "answers", "score", "completedAt"]
  */
 export async function enqueueResult(item) {
   const session = getCurrentSession();
-  const uid = item.ownerId || session.user?.uid;
+  const isStudentActive = session.active && session.user?.uid;
+  const uid = item.ownerId || (isStudentActive ? session.user.uid : 'guest');
+  const alias = item.alias || (isStudentActive ? (session.alias || 'Siswa') : 'Tamu');
 
-  if (!uid) {
-    console.info('[syncService] Mode Tamu aktif; item tidak diantrekan ke cloud.');
-    return { success: false, reason: 'guest' };
-  }
-
-  // Buat ID percobaan acak tetap sesuai DATABASE.md (contoh: att_20261103_8f3a2c)
+  // Buat ID stabil jika belum ada
   const dateStr = new Date().toISOString().slice(0, 10).replace(/-/g, '');
   const randStr = Math.random().toString(36).substring(2, 8);
   const attemptId = item.id || `att_${dateStr}_${randStr}`;
 
-  const queueItem = {
-    id: attemptId,
-    ownerId: uid,
-    alias: item.alias || session.alias || 'Siswa',
-    moduleId: item.moduleId || 'laju-reaksi',
-    activityId: item.activityId || 'umum',
-    questionVersion: item.questionVersion || 'qb-2026-11-03',
-    kind: item.kind, // 'quiz' | 'lab-observation' | 'module-complete'
-    answers: item.answers || {},
-    score: item.score ?? null,
-    totalQuestions: item.totalQuestions ?? undefined,
-    correctAnswers: item.correctAnswers ?? undefined,
-    incorrectAnswers: item.incorrectAnswers ?? undefined,
-    simulation: item.simulation || undefined,
-    completedAt: item.completedAt || new Date().toISOString(),
-    // Status lokal dalam antrean
-    status: 'pending', // 'pending' | 'syncing' | 'synced' | 'error'
-    error: null,
-    enqueuedAt: new Date().toISOString(),
-    syncedAt: null,
-  };
-
-  const currentQueue = getQueue(uid);
-  // Cegah duplikasi ID dalam antrean
-  const existingIdx = currentQueue.findIndex((q) => q.id === attemptId);
-  if (existingIdx >= 0) {
-    currentQueue[existingIdx] = queueItem;
-  } else {
-    currentQueue.push(queueItem);
+  // Normalisasi kind sesuai attemptContract.js
+  let normalizedKind = item.kind;
+  if (item.kind === 'quiz') normalizedKind = 'practice';
+  if (item.kind === 'lab-observation') normalizedKind = 'observation';
+  if (!['diagnostic', 'practice', 'pretest', 'posttest', 'observation'].includes(normalizedKind)) {
+    normalizedKind = 'practice';
   }
 
-  saveQueue(uid, currentQueue);
+  // Normalisasi answers: nilai map wajib string dan panjang <= 2000
+  // Payload memuat answers: item.answers yang dipetakan nilainya ke string
+  const rawAnswers = item.answers || {};
+  const stringAnswers = {};
+  for (const [k, v] of Object.entries(rawAnswers)) {
+    stringAnswers[String(k)] = typeof v === 'string' ? v.slice(0, 2000) : String(v ?? '').slice(0, 2000);
+  }
+  if (Object.keys(stringAnswers).length === 0) {
+    stringAnswers['ans_1'] = 'completed';
+  }
 
-  // Jika online dan terautentikasi, segera proses antrean
-  if (navigator.onLine && isConfigured) {
+  // Normalisasi score: number 0..100
+  let normalizedScore = Number(item.score);
+  if (!Number.isFinite(normalizedScore) || normalizedScore < 0) {
+    normalizedScore = normalizedKind === 'observation' ? 100 : 0;
+  }
+  if (normalizedScore > 100) normalizedScore = 100;
+
+  const attemptData = {
+    id: attemptId.slice(0, 64),
+    ownerId: uid.slice(0, 128),
+    alias: String(alias).slice(0, 80),
+    moduleId: String(item.moduleId || 'laju-reaksi').slice(0, 64),
+    activityId: String(item.activityId || 'umum').slice(0, 64),
+    questionVersion: String(item.questionVersion || 'qb-2026-11-03').slice(0, 32),
+    kind: normalizedKind,
+    answers: stringAnswers,
+    score: normalizedScore,
+    completedAt: item.completedAt || new Date().toISOString(),
+  };
+
+  // Validasi ketat terhadap kontrak attemptContract.js
+  const validatedAttempt = payloadOf(attemptData);
+
+  // Rekam ke localStore (jika uid === 'guest' status: 'local'; jika login status: 'pending')
+  recordAttempt(uid, validatedAttempt);
+
+  // Update backup queue untuk kompatibilitas backward
+  const currentQ = getQueue(uid);
+  const qIdx = currentQ.findIndex((q) => q.id === attemptId);
+  const queueItem = {
+    ...validatedAttempt,
+    totalQuestions: item.totalQuestions,
+    correctAnswers: item.correctAnswers,
+    incorrectAnswers: item.incorrectAnswers,
+    simulation: item.simulation,
+    status: uid === 'guest' ? 'local' : 'pending',
+    enqueuedAt: new Date().toISOString(),
+  };
+  if (qIdx >= 0) {
+    currentQ[qIdx] = queueItem;
+  } else {
+    currentQ.push(queueItem);
+  }
+  saveQueue(uid, currentQ);
+
+  notifySyncListeners();
+
+  // Jika online, terkonfigurasi, dan dalam mode akun aktif, segera proses antrean
+  if (uid !== 'guest' && navigator.onLine && isConfigured) {
     processQueue(uid).catch((err) => {
       console.warn('[syncService] Pemrosesan antrean otomatis tertunda:', err);
     });
@@ -150,7 +193,7 @@ export async function enqueueResult(item) {
 }
 
 /**
- * Memproses pengiriman antrean ke Cloud Firestore
+ * Memproses pengiriman antrean ke Cloud Firestore menggunakan syncPending() dan saveAttempt()
  */
 let isProcessing = false;
 
@@ -159,7 +202,7 @@ export async function processQueue(targetUid) {
   const session = getCurrentSession();
   const uid = targetUid || session.user?.uid;
 
-  if (!uid || !isConfigured || !db || !session.user || session.user.uid !== uid) {
+  if (!uid || uid === 'guest' || !isConfigured || !session.user || session.user.uid !== uid) {
     return;
   }
 
@@ -171,94 +214,38 @@ export async function processQueue(targetUid) {
   notifySyncListeners();
 
   try {
-    const queue = getQueue(uid);
-    let hasChanges = false;
-
-    for (let i = 0; i < queue.length; i++) {
-      const item = queue[i];
-
-      // Hanya kirim item yang statusnya belum 'synced' dan pemiliknya cocok
-      if (item.status === 'synced') continue;
-      if (item.ownerId !== session.user.uid) continue;
-
-      item.status = 'syncing';
-      saveQueue(uid, queue);
-
-      try {
-        const docRef = doc(db, 'results', item.id);
-
-        // Bentuk payload Firestore persis sesuai validCommon & validQuiz di DATABASE.md
-        const firestorePayload = {
-          id: item.id,
-          ownerId: item.ownerId,
-          alias: item.alias,
-          moduleId: item.moduleId,
-          activityId: item.activityId,
-          questionVersion: item.questionVersion,
-          kind: item.kind,
-          answers: item.answers,
-          score: item.score !== undefined ? item.score : null,
-          completedAt: item.completedAt,
-          receivedAt: serverTimestamp(),
-        };
-
-        if (item.kind === 'quiz') {
-          firestorePayload.totalQuestions = Number(item.totalQuestions || 0);
-          firestorePayload.correctAnswers = Number(item.correctAnswers || 0);
-          firestorePayload.incorrectAnswers = Number(item.incorrectAnswers || 0);
-        }
-
-        if (item.kind === 'lab-observation' && item.simulation) {
-          firestorePayload.simulation = item.simulation;
-        }
-
-        // Tulis dokumen ke Firestore (create-only)
-        await setDoc(docRef, firestorePayload);
-
-        // Verifikasi baca ulang dokumen untuk bukti konfirmasi server
-        const verifySnap = await getDoc(docRef);
-        if (verifySnap.exists() && verifySnap.data()?.ownerId === item.ownerId) {
-          item.status = 'synced';
-          item.syncedAt = new Date().toISOString();
-          item.error = null;
-          hasChanges = true;
-
-          // Perbarui progres akun lokal
-          updateLocalAccountProgress(uid, item);
-        } else {
-          item.status = 'error';
-          item.error = 'Verifikasi dokumen setelah kirim gagal.';
-          hasChanges = true;
-        }
-      } catch (writeErr) {
-        console.warn(`[syncService] Gagal mengirim item ${item.id}:`, writeErr);
-
-        // Jika error adalah izin ditolak atau sudah ada (deduplikasi)
-        try {
-          const checkDoc = await getDoc(doc(db, 'results', item.id));
-          if (checkDoc.exists() && checkDoc.data()?.ownerId === item.ownerId) {
-            item.status = 'synced';
-            item.syncedAt = new Date().toISOString();
-            item.error = null;
-            hasChanges = true;
-            updateLocalAccountProgress(uid, item);
-            continue;
+    await syncPending(
+      uid,
+      { saveAttempt },
+      () => getCurrentSession().user?.uid === uid,
+      (status, attemptId) => {
+        if (status === 'sent') {
+          const rec = readScope(uid).records[attemptId];
+          if (rec?.attempt) {
+            updateLocalAccountProgress(uid, rec.attempt);
           }
-        } catch {
-          // Abaikan
         }
+        notifySyncListeners();
+      }
+    );
 
-        item.status = 'error';
-        item.error = writeErr.message || 'Gagal menyimpan ke Firestore';
-        hasChanges = true;
+    // Sinkronkan status pada legacy queue
+    const scope = readScope(uid);
+    const legacyQueue = getQueue(uid);
+    let changed = false;
+    for (const item of legacyQueue) {
+      const scopeRec = scope.records[item.id];
+      if (scopeRec && item.status !== scopeRec.status) {
+        item.status = scopeRec.status;
+        item.syncedAt = scopeRec.receivedAt || new Date().toISOString();
+        changed = true;
       }
     }
-
-    if (hasChanges) {
-      saveQueue(uid, queue);
+    if (changed) {
+      saveQueue(uid, legacyQueue);
     }
   } catch (err) {
-    console.error('[syncService] Error saat memproses antrean:', err);
+    console.warn('[syncService] Error saat memproses antrean:', err);
   } finally {
     isProcessing = false;
     notifySyncListeners();
@@ -277,19 +264,19 @@ function updateLocalAccountProgress(uid, syncedItem) {
     lastUpdated: new Date().toISOString(),
   };
 
-  if (syncedItem.kind === 'quiz') {
+  if (['quiz', 'practice', 'diagnostic', 'pretest', 'posttest'].includes(syncedItem.kind)) {
     const exists = current.quizAttempts.some((q) => q.id === syncedItem.id);
     if (!exists) {
       current.quizAttempts.unshift({
         id: syncedItem.id,
         category: syncedItem.activityId,
         score: syncedItem.score,
-        totalQuestions: syncedItem.totalQuestions,
-        correctAnswers: syncedItem.correctAnswers,
+        totalQuestions: Object.keys(syncedItem.answers || {}).length,
+        correctAnswers: syncedItem.score >= 50 ? Object.keys(syncedItem.answers || {}).length : 0,
         completedAt: syncedItem.completedAt,
       });
     }
-  } else if (syncedItem.kind === 'lab-observation') {
+  } else if (['lab-observation', 'observation'].includes(syncedItem.kind)) {
     if (!current.completedObservations.includes(syncedItem.activityId)) {
       current.completedObservations.push(syncedItem.activityId);
     }
@@ -307,103 +294,129 @@ function updateLocalAccountProgress(uid, syncedItem) {
 }
 
 /**
- * Migrasi hasil belajar mode tamu (LocalStorage) ke akun siswa
+ * Migrasi hasil belajar mode tamu (LocalStorage) ke akun siswa dengan persetujuan pengguna
  * PENTING: Sesuai DATABASE.md, data tamu di reaksi-lab-progress TIDAK DIHAPUS
- * sampai seluruh item berhasil terkonfirmasi terkirim (status 'synced').
+ * sampai seluruh item berhasil terkonfirmasi terkirim.
  */
 export async function migrateGuestDataToAccount(uid, alias) {
+  if (!uid || uid === 'guest') {
+    throw new Error('Hanya akun terdaftar yang dapat memindahkan data.');
+  }
+
+  const studentAlias = alias || getCurrentSession().alias || 'Siswa';
+  const guestScope = readScope('guest');
+  const guestRecords = Object.values(guestScope.records || {}).filter((r) => r.status === 'local');
+  const guestIds = guestRecords.map((r) => r.attempt.id);
+
+  let migratedCount = 0;
+
+  // 1. Klaim seluruh rekaman guest yang ada di localStore
+  if (guestIds.length > 0) {
+    claimGuest(uid, studentAlias, guestIds);
+    migratedCount += guestIds.length;
+  }
+
+  // 2. Baca progres lokal mode tamu (reaksi-lab-progress) jika ada attempt kuis lama
   const guestProgress = getStoredProgress();
-  const guestObservations = getStoredObservations();
-
-  const itemsToEnqueue = [];
-
-  // 1. Kuis Mode Tamu
   if (Array.isArray(guestProgress.quizAttempts) && guestProgress.quizAttempts.length > 0) {
     guestProgress.quizAttempts.forEach((attempt) => {
-      itemsToEnqueue.push({
-        id: `att_mig_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
-        ownerId: uid,
-        alias: alias || 'Siswa',
-        moduleId: 'laju-reaksi',
-        activityId: attempt.category || 'quiz-formatif',
-        questionVersion: 'qb-2026-11-03',
-        kind: 'quiz',
-        answers: {}, // Guest history may not have raw answers; maintain map
-        score: attempt.score,
-        totalQuestions: attempt.totalQuestions || 4,
-        correctAnswers: attempt.correctAnswers || 0,
-        incorrectAnswers: (attempt.totalQuestions || 4) - (attempt.correctAnswers || 0),
-        completedAt: attempt.completedAt || new Date().toISOString(),
-      });
+      const attId = attempt.id || `att_mig_quiz_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`;
+      const existing = readScope(uid).records[attId];
+      if (!existing) {
+        try {
+          const valid = payloadOf({
+            id: attId,
+            ownerId: uid,
+            alias: studentAlias,
+            moduleId: 'laju-reaksi',
+            activityId: attempt.category || 'quiz-formatif-laju',
+            questionVersion: 'qb-2026-11-03',
+            kind: 'practice',
+            answers: { q_migrated: 'true' },
+            score: Number(attempt.score) || 0,
+            completedAt: attempt.completedAt || new Date().toISOString(),
+          });
+          recordAttempt(uid, valid);
+          migratedCount++;
+        } catch {
+          // Abaikan jika tidak valid
+        }
+      }
     });
   }
 
-  // 2. Pengamatan Lab Mode Tamu
+  // 3. Baca pengamatan lokal mode tamu (reaksi-lab-observations) jika belum masuk ke localStore
+  const guestObservations = getStoredObservations();
   if (Array.isArray(guestObservations) && guestObservations.length > 0) {
     guestObservations.forEach((obs) => {
-      itemsToEnqueue.push({
-        id: `att_mig_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
-        ownerId: uid,
-        alias: alias || 'Siswa',
-        moduleId: 'laju-reaksi',
-        activityId: obs.experimentId || 'exp-ab',
-        questionVersion: 'qb-2026-11-03',
-        kind: 'lab-observation',
-        answers: {
-          trialNumber: obs.trialNumber || 1,
-          recordedCollisionCount: obs.machineData?.collisionCount || 0,
-          recordedCollisionFrequency: obs.machineData?.collisionFrequency || 0,
-          recordedEffectiveCollisionCount: obs.machineData?.effectiveCollisionCount || 0,
-          recordedProductCount: obs.machineData?.productCount || 0,
-          recordedReactionRate: obs.machineData?.reactionRate || 0,
-          observationNotes: obs.studentInterpretation?.observationNotes || '',
-          analysis: obs.studentInterpretation?.analysis || '',
-          conclusion: obs.studentInterpretation?.conclusion || '',
-        },
-        simulation: {
-          simulationResultId: obs.id,
-          modelVersion: 'sim-1.0',
-          parameters: obs.observedParameters || {},
-          duration: obs.observedParameters?.duration || 15,
-          collisionCount: obs.machineData?.collisionCount || 0,
-          collisionFrequency: obs.machineData?.collisionFrequency || 0,
-          effectiveCollisionCount: obs.machineData?.effectiveCollisionCount || 0,
-          productCount: obs.machineData?.productCount || 0,
-          reactionRate: obs.machineData?.reactionRate || 0,
-        },
-        score: null,
-        completedAt: obs.savedAt || new Date().toISOString(),
-      });
+      const attId = `att_mig_obs_${obs.id || Date.now()}`;
+      const existing = readScope(uid).records[attId];
+      if (!existing) {
+        try {
+          const valid = payloadOf({
+            id: attId,
+            ownerId: uid,
+            alias: studentAlias,
+            moduleId: 'laju-reaksi',
+            activityId: obs.experimentId || 'exp-ab',
+            questionVersion: 'qb-2026-11-03',
+            kind: 'observation',
+            answers: {
+              trialNumber: String(obs.trialNumber || 1),
+              recordedCollisionCount: String(obs.machineData?.collisionCount ?? 0),
+              recordedCollisionFrequency: String(obs.machineData?.collisionFrequency ?? 0),
+              recordedEffectiveCollisionCount: String(obs.machineData?.effectiveCollisionCount ?? 0),
+              recordedProductCount: String(obs.machineData?.productCount ?? 0),
+              recordedReactionRate: String(obs.machineData?.reactionRate ?? 0),
+              observationNotes: String(obs.studentInterpretation?.observationNotes || ''),
+              analysis: String(obs.studentInterpretation?.analysis || ''),
+              conclusion: String(obs.studentInterpretation?.conclusion || ''),
+            },
+            score: 100,
+            completedAt: obs.savedAt || new Date().toISOString(),
+          });
+          recordAttempt(uid, valid);
+          migratedCount++;
+        } catch {
+          // Abaikan jika tidak valid
+        }
+      }
     });
   }
 
-  // Masukkan semua ke antrean
-  for (const item of itemsToEnqueue) {
-    await enqueueResult(item);
-  }
+  notifySyncListeners();
 
-  // Segera proses pengiriman jika online
+  // 4. Segera proses pengiriman jika online dan terkonfigurasi
   if (navigator.onLine && isConfigured) {
     await processQueue(uid);
   }
 
-  return { migratedCount: itemsToEnqueue.length };
+  return { migratedCount };
 }
 
 /**
  * Hitung statistik antrean untuk indikator UI
  */
 export function getSyncStats(uid) {
-  const queue = getQueue(uid);
-  const pending = queue.filter((q) => q.status === 'pending' || q.status === 'syncing').length;
-  const synced = queue.filter((q) => q.status === 'synced').length;
-  const error = queue.filter((q) => q.status === 'error').length;
+  const currentUid = uid || getCurrentSession().user?.uid || 'guest';
+  const scope = readScope(currentUid);
+  const records = Object.values(scope.records || {});
+
+  const pending = records.filter((r) => r.status === 'pending').length;
+  const synced = records.filter((r) => r.status === 'sent').length;
+  const local = records.filter((r) => r.status === 'local').length;
+  const total = records.length;
+
+  const guestScope = readScope('guest');
+  const guestLocal = Object.values(guestScope.records || {}).filter((r) => r.status === 'local').length;
 
   return {
-    total: queue.length,
+    total,
     pending,
     synced,
-    error,
+    local,
+    error: 0,
+    guestLocal,
     isProcessing,
   };
 }
@@ -417,4 +430,3 @@ if (typeof window !== 'undefined') {
     }
   });
 }
-

@@ -47,7 +47,13 @@ export default function TeacherDashboard({ onNavigate }) {
       setAllResults(resultsData);
     } catch (err) {
       console.error('[TeacherDashboard] Gagal memuat data kelas:', err);
-      setError(err.message || 'Gagal memuat data hasil belajar siswa.');
+      let friendlyError = 'Terjadi kendala saat memuat data hasil belajar siswa.';
+      if (err.message?.includes('Akses ditolak') || err.code === 'permission-denied') {
+        friendlyError = 'Akses ditolak: Hanya akun guru yang berhak membaca hasil kelas.';
+      } else if (err.code === 'unavailable' || err.code === 'network-request-failed' || !navigator.onLine) {
+        friendlyError = 'Koneksi internet bermasalah saat memuat data kelas. Silakan periksa koneksi Anda.';
+      }
+      setError(friendlyError);
     } finally {
       setLoading(false);
     }
@@ -65,7 +71,13 @@ export default function TeacherDashboard({ onNavigate }) {
         })
         .catch((err) => {
           if (!isCancelled) {
-            setError(err.message || 'Gagal memuat data kelas.');
+            let friendlyError = 'Terjadi kendala saat memuat data hasil belajar siswa.';
+            if (err.message?.includes('Akses ditolak') || err.code === 'permission-denied') {
+              friendlyError = 'Akses ditolak: Hanya akun guru yang berhak membaca hasil kelas.';
+            } else if (err.code === 'unavailable' || err.code === 'network-request-failed' || !navigator.onLine) {
+              friendlyError = 'Koneksi internet bermasalah saat memuat data kelas. Silakan periksa koneksi Anda.';
+            }
+            setError(friendlyError);
           }
         });
     }
@@ -376,11 +388,15 @@ export default function TeacherDashboard({ onNavigate }) {
                           <h5 className="breakdown-heading">Analisis Jawaban Siswa per Butir Soal:</h5>
                           <div className="answers-grid">
                             {QUIZ_QUESTIONS.map((q, qIndex) => {
-                              const studentAnswerIndex = attempt.answers?.[q.id];
-                              const isAnswered = studentAnswerIndex !== undefined;
-                              const isCorrect = studentAnswerIndex === q.correctAnswer;
+                              const studentAnswerVal = attempt.answers?.[q.id];
+                              const isAnswered = studentAnswerVal !== undefined && studentAnswerVal !== null && studentAnswerVal !== '';
+                              const studentAnswerNum = Number(studentAnswerVal);
+                              const isCorrect = isAnswered && (
+                                (!isNaN(studentAnswerNum) && studentAnswerNum === q.correctAnswer) ||
+                                studentAnswerVal === q.options[q.correctAnswer]
+                              );
                               const selectedText = isAnswered
-                                ? q.options[studentAnswerIndex]
+                                ? (!isNaN(studentAnswerNum) && q.options[studentAnswerNum] ? q.options[studentAnswerNum] : studentAnswerVal)
                                 : 'Tidak dijawab';
 
                               return (

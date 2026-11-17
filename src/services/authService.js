@@ -27,6 +27,7 @@ let currentSession = {
   registration: null,
   memberData: null,
   needsRegistrationDoc: false,
+  teacherConfigured: null,
   error: null,
 };
 
@@ -86,6 +87,7 @@ export async function resolveUserRole(user, firestoreDb = db, getDocFn = getDoc)
   }
 
   const uid = user.uid;
+  let teacherConfigured = false;
 
   // ==============================================================
   // 1. PRIORITAS UTAMA: PEMERIKSAAN GURU (DUAL-READ)
@@ -94,18 +96,25 @@ export async function resolveUserRole(user, firestoreDb = db, getDocFn = getDoc)
   // 1.a. Struktur lama: config/roles
   try {
     const rolesSnap = await getDocFn(doc(firestoreDb, 'config', 'roles'));
-    if (rolesSnap?.exists() && rolesSnap.data()?.teacherUid === uid) {
-      return {
-        user,
-        role: 'teacher',
-        alias: 'Guru Pengampu',
-        active: true,
-        accessStatus: 'Guru Pengampu (Akses Penuh)',
-        registration: null,
-        memberData: null,
-        needsRegistrationDoc: false,
-        error: null,
-      };
+    if (rolesSnap?.exists()) {
+      const rolesData = rolesSnap.data();
+      if (rolesData?.teacherUid && typeof rolesData.teacherUid === 'string' && rolesData.teacherUid.trim().length > 0) {
+        teacherConfigured = true;
+      }
+      if (rolesData?.teacherUid === uid) {
+        return {
+          user,
+          role: 'teacher',
+          alias: 'Guru Pengampu',
+          active: true,
+          accessStatus: 'Guru Pengampu (Akses Penuh)',
+          registration: null,
+          memberData: null,
+          needsRegistrationDoc: false,
+          teacherConfigured: true,
+          error: null,
+        };
+      }
     }
   } catch (rolesErr) {
     // Permission-denied pada config/roles wajar bagi non-guru di Firestore security rules
@@ -117,18 +126,25 @@ export async function resolveUserRole(user, firestoreDb = db, getDocFn = getDoc)
   // 1.b. Struktur handout: settings/classroom
   try {
     const settingsSnap = await getDocFn(doc(firestoreDb, 'settings', 'classroom'));
-    if (settingsSnap?.exists() && settingsSnap.data()?.teacherUid === uid) {
-      return {
-        user,
-        role: 'teacher',
-        alias: 'Guru Pengampu',
-        active: true,
-        accessStatus: 'Guru Pengampu (Akses Penuh)',
-        registration: null,
-        memberData: null,
-        needsRegistrationDoc: false,
-        error: null,
-      };
+    if (settingsSnap?.exists()) {
+      const settingsData = settingsSnap.data();
+      if (settingsData?.teacherUid && typeof settingsData.teacherUid === 'string' && settingsData.teacherUid.trim().length > 0) {
+        teacherConfigured = true;
+      }
+      if (settingsData?.teacherUid === uid) {
+        return {
+          user,
+          role: 'teacher',
+          alias: 'Guru Pengampu',
+          active: true,
+          accessStatus: 'Guru Pengampu (Akses Penuh)',
+          registration: null,
+          memberData: null,
+          needsRegistrationDoc: false,
+          teacherConfigured: true,
+          error: null,
+        };
+      }
     }
   } catch (settingsErr) {
     if (settingsErr.code !== 'permission-denied') {
@@ -161,6 +177,7 @@ export async function resolveUserRole(user, firestoreDb = db, getDocFn = getDoc)
           registration: null,
           memberData: data,
           needsRegistrationDoc: false,
+          teacherConfigured,
           error: 'Akun Anda berstatus nonaktif di roster kelas. Akses penyimpanan cloud belum diizinkan.',
         };
       }
@@ -180,6 +197,7 @@ export async function resolveUserRole(user, firestoreDb = db, getDocFn = getDoc)
         registration: null,
         memberData: null,
         needsRegistrationDoc: false,
+        teacherConfigured,
         error: rosterErr.code === 'permission-denied'
           ? 'Akses ditolak saat memverifikasi status keanggotaan kelas.'
           : 'Gagal menghubungi server database: ' + (rosterErr.message || 'Koneksi bermasalah'),
@@ -214,6 +232,7 @@ export async function resolveUserRole(user, firestoreDb = db, getDocFn = getDoc)
           registration: null,
           memberData: null,
           needsRegistrationDoc: false,
+          teacherConfigured,
           error: memberErr.code === 'permission-denied'
             ? 'Akses ditolak saat memverifikasi status keanggotaan kelas.'
             : 'Gagal menghubungi server database: ' + (memberErr.message || 'Koneksi bermasalah'),
@@ -240,6 +259,7 @@ export async function resolveUserRole(user, firestoreDb = db, getDocFn = getDoc)
       memberData: studentData,
       source: studentSource,
       needsRegistrationDoc: false,
+      teacherConfigured,
       error: null,
     };
   }
@@ -261,6 +281,7 @@ export async function resolveUserRole(user, firestoreDb = db, getDocFn = getDoc)
           registration: regData,
           memberData: null,
           needsRegistrationDoc: false,
+          teacherConfigured,
           error: null,
         };
       }
@@ -279,6 +300,7 @@ export async function resolveUserRole(user, firestoreDb = db, getDocFn = getDoc)
         registration: null,
         memberData: null,
         needsRegistrationDoc: false,
+        teacherConfigured,
         error: 'Gagal memeriksa status pendaftaran: ' + (regErr.message || 'Koneksi bermasalah'),
       };
     }
@@ -297,6 +319,7 @@ export async function resolveUserRole(user, firestoreDb = db, getDocFn = getDoc)
     registration: null,
     memberData: null,
     needsRegistrationDoc: true,
+    teacherConfigured,
     error: null,
   };
 }
@@ -320,11 +343,45 @@ export async function verifyUserRole(user) {
       registration: null,
       memberData: null,
       needsRegistrationDoc: false,
+      teacherConfigured: false,
       error: 'Gagal menghubungi server verifikasi peran: ' + (err.message || 'Koneksi bermasalah'),
     };
     notifyListeners();
     return currentSession;
   }
+}
+
+/**
+ * Memeriksa status konfigurasi Guru Pengampu di Firestore
+ * untuk memberikan panduan kepada pengelola jika teacherUid belum disetel
+ */
+export async function checkTeacherConfigStatus(firestoreDb = db, getDocFn = getDoc) {
+  if (!firestoreDb) return { configured: false, reason: 'database-unavailable' };
+  try {
+    const settingsSnap = await getDocFn(doc(firestoreDb, 'settings', 'classroom'));
+    if (settingsSnap?.exists()) {
+      const data = settingsSnap.data();
+      if (data?.teacherUid && typeof data.teacherUid === 'string' && data.teacherUid.trim().length > 0) {
+        return { configured: true, source: 'settings/classroom', teacherUid: data.teacherUid };
+      }
+    }
+  } catch {
+    // Abaikan error pembacaan
+  }
+
+  try {
+    const rolesSnap = await getDocFn(doc(firestoreDb, 'config', 'roles'));
+    if (rolesSnap?.exists()) {
+      const data = rolesSnap.data();
+      if (data?.teacherUid && typeof data.teacherUid === 'string' && data.teacherUid.trim().length > 0) {
+        return { configured: true, source: 'config/roles', teacherUid: data.teacherUid };
+      }
+    }
+  } catch {
+    // Abaikan error pembacaan
+  }
+
+  return { configured: false, reason: 'not-set' };
 }
 
 /**
@@ -376,9 +433,15 @@ export async function loginWithEmail(email, password) {
     } else if (err.code === 'auth/too-many-requests') {
       message = 'Terlalu banyak percobaan masuk yang gagal. Silakan coba lagi beberapa saat lagi.';
     } else if (err.code === 'auth/network-request-failed') {
-      message = 'Koneksi jaringan terputus. Silakan periksa koneksi internet Anda.';
-    } else if (err.message) {
-      message = err.message;
+      message = 'Koneksi internet bermasalah. Silakan periksa koneksi internet Anda.';
+    } else if (
+      err.code === 'auth/api-key-not-valid' ||
+      err.code === 'auth/invalid-api-key' ||
+      err.code === 'auth/configuration-not-found'
+    ) {
+      message = 'Layanan login belum dikonfigurasi dengan benar.';
+    } else {
+      message = 'Terjadi kendala saat masuk. Silakan coba kembali.';
     }
     const customErr = new Error(message);
     customErr.code = err.code;
@@ -453,9 +516,15 @@ export async function registerWithAccount({ name, email, password, kelas }) {
     } else if (err.code === 'auth/too-many-requests') {
       message = 'Terlalu banyak permintaan pendaftaran. Silakan coba lagi nanti.';
     } else if (err.code === 'auth/network-request-failed') {
-      message = 'Koneksi jaringan terputus. Silakan periksa koneksi internet Anda.';
-    } else if (err.message) {
-      message = err.message;
+      message = 'Koneksi internet bermasalah. Silakan periksa koneksi internet Anda.';
+    } else if (
+      err.code === 'auth/api-key-not-valid' ||
+      err.code === 'auth/invalid-api-key' ||
+      err.code === 'auth/configuration-not-found'
+    ) {
+      message = 'Layanan login belum dikonfigurasi dengan benar.';
+    } else {
+      message = 'Terjadi kendala saat mendaftar akun. Silakan coba kembali.';
     }
     const customErr = new Error(message);
     customErr.code = err.code;
