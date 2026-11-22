@@ -250,6 +250,7 @@
 
 .table-responsive {
   overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
 }
 
 .history-table {
@@ -302,7 +303,61 @@
     align-items: flex-start;
   }
 
+  .overall-bar-track {
+    width: 100%;
+  }
+
+  .overall-bar-wrapper {
+    width: 100%;
+  }
+
   .progress-breakdown-grid {
     grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 480px) {
+  .progress-page-container {
+    padding: 1.25rem 1rem 3.5rem;
+  }
+
+  .progress-hero-banner {
+    padding: 1.35rem 1rem;
+    border-radius: var(--radius-lg);
+  }
+
+  .banner-title {
+    font-size: 1.25rem;
+  }
+
+  .breakdown-card,
+  .quiz-history-card {
+    padding: 1.25rem 1rem;
+    border-radius: var(--radius-lg);
+  }
+
+  .checklist-item {
+    padding: 0.75rem 0.85rem;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.6rem;
+  }
+
+  .check-toggle-btn {
+    min-height: 44px;
+    width: 100%;
+  }
+
+  .btn-read-mod {
+    align-self: flex-end;
+    min-height: 38px;
+    display: inline-flex;
+    align-items: center;
+    padding: 0.4rem 0.85rem;
+  }
+
+  .btn-reset {
+    min-height: 44px;
+    padding: 0.5rem 0;
   }
 }

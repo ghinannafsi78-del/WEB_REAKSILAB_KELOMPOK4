@@ -192,3 +192,41 @@
 .metrics-footer-note strong {
   color: #f1f5f9;
 }
+
+@media (max-width: 480px) {
+  .collision-metrics-container {
+    padding: 14px 12px;
+    gap: 10px;
+  }
+
+  .metrics-grid-layout {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 8px;
+  }
+
+  .metric-box {
+    padding: 10px;
+  }
+
+  .main-metric-val {
+    font-size: 1.35rem;
+  }
+
+  .metric-title {
+    font-size: 0.72rem;
+  }
+}
+
+@media (max-width: 340px) {
+  .metrics-grid-layout {
+    gap: 6px;
+  }
+
+  .main-metric-val {
+    font-size: 1.2rem;
+  }
+
+  .metric-box {
+    padding: 8px;
+  }
+}

@@ -71,10 +71,10 @@ export async function getClassRoster() {
       seenUids.add(doc.id);
       const data = doc.data();
       roster.push({
-        uid: doc.id,
-        alias: data.alias || data.name || `Siswa-${doc.id.substring(0, 4)}`,
-        active: data.active !== false,
         ...data,
+        uid: doc.id,
+        alias: data.alias || data.name || (typeof doc.id === 'string' && doc.id.length >= 4 ? `Siswa-${doc.id.substring(0, 4)}` : `Siswa-${doc.id}`),
+        active: data.active !== false,
       });
     });
   } catch (err) {
@@ -89,15 +89,19 @@ export async function getClassRoster() {
         seenUids.add(doc.id);
         const data = doc.data();
         roster.push({
-          uid: doc.id,
-          alias: data.alias || `Siswa-${doc.id.substring(0, 4)}`,
-          active: data.active !== false,
           ...data,
+          uid: doc.id,
+          alias: data.alias || (typeof doc.id === 'string' && doc.id.length >= 4 ? `Siswa-${doc.id.substring(0, 4)}` : `Siswa-${doc.id}`),
+          active: data.active !== false,
         });
       }
     });
   } catch (err) {
-    console.warn('[resultService] Gagal membaca roster legacy:', err);
+    if (err?.code === 'permission-denied') {
+      console.info('[resultService] Koleksi legacy roster tidak dapat diakses (menggunakan data anggota members):', err.message || err);
+    } else {
+      console.warn('[resultService] Gagal membaca roster legacy:', err);
+    }
   }
 
   return roster.sort((a, b) => (a.alias || '').localeCompare(b.alias || ''));
@@ -153,9 +157,12 @@ export function groupResultsByStudent(results, roster = []) {
 
   // Inisialisasi peta siswa dari roster
   roster.forEach((r) => {
-    studentMap[r.uid] = {
-      uid: r.uid,
-      alias: r.alias || `Siswa-${r.uid.substring(0, 4)}`,
+    const rUid = typeof r?.uid === 'string' && r.uid.trim().length > 0 ? r.uid.trim() : null;
+    if (!rUid) return;
+
+    studentMap[rUid] = {
+      uid: rUid,
+      alias: r.alias || (rUid.length >= 4 ? `Siswa-${rUid.substring(0, 4)}` : `Siswa-${rUid}`),
       active: r.active !== false,
       quizResults: [],
       labResults: [],
@@ -168,11 +175,17 @@ export function groupResultsByStudent(results, roster = []) {
 
   // Petakan hasil ke masing-masing siswa
   results.forEach((res) => {
-    const uid = res.ownerId;
+    // Validasi UID kepemilikan hasil belajar sesuai kontrak (ownerId)
+    const rawUid = res?.ownerId;
+    const uid = typeof rawUid === 'string' && rawUid.trim().length > 0 ? rawUid.trim() : null;
+
+    // Jangan membuat entri siswa tanpa identitas atau menggunakan UID sintetis
+    if (!uid) return;
+
     if (!studentMap[uid]) {
       studentMap[uid] = {
         uid,
-        alias: res.alias || `Siswa-${uid.substring(0, 4)}`,
+        alias: res.alias || (uid.length >= 4 ? `Siswa-${uid.substring(0, 4)}` : `Siswa-${uid}`),
         active: true,
         quizResults: [],
         labResults: [],

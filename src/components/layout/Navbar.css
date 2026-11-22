@@ -220,6 +220,7 @@
   align-items: center;
   justify-content: space-between;
   padding: 0.75rem 1rem;
+  min-height: 44px;
   border-radius: var(--radius-md);
   font-size: 0.98rem;
   font-weight: 600;
@@ -238,26 +239,6 @@
   font-size: 0.9rem;
   font-weight: bold;
 }
-
-/* Responsive Breakpoints */
-@media (max-width: 900px) {
-  .desktop-nav {
-    display: none;
-  }
-
-  .mobile-menu-btn {
-    display: flex;
-  }
-
-  .mobile-drawer {
-    display: block;
-  }
-
-  .navbar-container {
-    padding: 0.75rem 1rem;
-  }
-}
-
 
 /* Navbar Auth Button & Group */
 .navbar-auth-group {
@@ -392,4 +373,88 @@
 .mobile-user-status {
   font-size: 0.72rem;
   color: var(--color-text-muted);
+}
+
+/* Responsive Breakpoints */
+@media (max-width: 900px) {
+  .desktop-nav {
+    display: none;
+  }
+
+  .mobile-menu-btn {
+    display: flex;
+  }
+
+  .mobile-drawer {
+    display: block;
+  }
+
+  .navbar-container {
+    padding: 0.75rem 1.25rem;
+  }
+}
+
+@media (max-width: 680px) {
+  .navbar-auth-group {
+    display: none;
+  }
+}
+
+@media (max-width: 540px) {
+  .brand-tagline {
+    display: none;
+  }
+
+  .brand-name {
+    font-size: 1.15rem;
+  }
+
+  .brand-icon-box {
+    width: 36px;
+    height: 36px;
+  }
+
+  .flask-svg {
+    width: 18px;
+    height: 18px;
+  }
+
+  .navbar-container {
+    padding: 0.65rem 0.85rem;
+    gap: 0.5rem;
+  }
+
+  .navbar-actions {
+    gap: 0.45rem;
+  }
+
+  .navbar-progress-pill {
+    padding: 0.25rem 0.55rem;
+    font-size: 0.75rem;
+  }
+}
+
+@media (max-width: 400px) {
+  .mobile-auth-actions-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 360px) {
+  .navbar-container {
+    padding: 0.55rem 0.65rem;
+  }
+
+  .brand-name {
+    font-size: 1.05rem;
+  }
+
+  .navbar-icon-btn {
+    width: 34px;
+    height: 34px;
+  }
+
+  .navbar-progress-pill .progress-text {
+    display: none;
+  }
 }

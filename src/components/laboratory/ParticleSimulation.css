@@ -266,11 +266,31 @@
 
 @media (max-width: 640px) {
   .canvas-viewport {
-    height: 280px;
+    height: 270px;
   }
   .particle-legend-row {
-    flex-direction: column;
-    align-items: flex-start;
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 8px;
+    padding: 8px 12px;
+  }
+  .canvas-header-bar {
+    padding: 8px 10px;
+  }
+  .condition-indicator {
+    font-size: 0.75rem;
+    flex-wrap: wrap;
+    gap: 4px;
+  }
+}
+
+@media (max-width: 360px) {
+  .canvas-viewport {
+    height: 220px;
+  }
+  .particle-legend-row {
+    grid-template-columns: 1fr;
+    gap: 6px;
   }
 }
 

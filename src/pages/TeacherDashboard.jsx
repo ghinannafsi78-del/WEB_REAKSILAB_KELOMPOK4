@@ -98,9 +98,11 @@ export default function TeacherDashboard({ onNavigate }) {
   // Filter daftar siswa
   const filteredStudents = useMemo(() => {
     return groupedStudents.filter((student) => {
-      const matchSearch =
-        student.alias.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        student.uid.toLowerCase().includes(searchQuery.toLowerCase());
+      const studentAlias = typeof student?.alias === 'string' ? student.alias.toLowerCase() : '';
+      const studentUid = typeof student?.uid === 'string' ? student.uid.toLowerCase() : '';
+      const query = searchQuery.toLowerCase();
+
+      const matchSearch = studentAlias.includes(query) || studentUid.includes(query);
 
       if (!matchSearch) return false;
 
@@ -271,18 +273,22 @@ export default function TeacherDashboard({ onNavigate }) {
               </thead>
               <tbody>
                 {filteredStudents.map((student, idx) => (
-                  <tr key={student.uid}>
+                  <tr key={student.uid || `student-${idx}`}>
                     <td className="text-muted">{idx + 1}</td>
                     <td className="student-alias-cell">
-                      <strong className="alias-name">{student.alias}</strong>
-                      <span className="uid-subtext">{student.uid.substring(0, 10)}...</span>
+                      <strong className="alias-name">{student.alias || 'Siswa'}</strong>
+                      <span className="uid-subtext">
+                        {typeof student.uid === 'string' && student.uid.length > 0
+                          ? (student.uid.length > 10 ? `${student.uid.substring(0, 10)}...` : student.uid)
+                          : '-'}
+                      </span>
                     </td>
                     <td>
                       <span className={`status-pill ${student.active ? 'active' : 'inactive'}`}>
                         {student.active ? 'Aktif' : 'Nonaktif'}
                       </span>
                     </td>
-                    <td>{student.quizResults.length} kali</td>
+                    <td>{student.quizResults?.length || 0} kali</td>
                     <td>
                       {student.bestQuizScore !== null ? (
                         <span className="score-badge best">{student.bestQuizScore}</span>
@@ -299,7 +305,7 @@ export default function TeacherDashboard({ onNavigate }) {
                     </td>
                     <td>
                       <span className="lab-count-badge">
-                        🧪 {student.labResults.length} lembar
+                        🧪 {student.labResults?.length || 0} lembar
                       </span>
                     </td>
                     <td>
@@ -329,8 +335,8 @@ export default function TeacherDashboard({ onNavigate }) {
               <div>
                 <span className="badge badge-cyan">DETAIL HASIL BELAJAR SISWA</span>
                 <h2 className="detail-student-title">
-                  {detailModalStudent.alias}{' '}
-                  <span className="detail-uid-badge">UID: {detailModalStudent.uid}</span>
+                  {detailModalStudent.alias || 'Siswa'}{' '}
+                  <span className="detail-uid-badge">UID: {detailModalStudent.uid || '-'}</span>
                 </h2>
               </div>
               <button
@@ -371,10 +377,10 @@ export default function TeacherDashboard({ onNavigate }) {
                       <div key={attempt.id} className="attempt-detail-card">
                         <div className="attempt-header-row">
                           <div>
-                            <span className="attempt-badge">Percobaan #{detailModalStudent.quizResults.length - attemptIdx}</span>
-                            <h4 className="attempt-title">{attempt.activityId}</h4>
+                            <span className="attempt-badge">Percobaan #{(detailModalStudent.quizResults?.length || 0) - attemptIdx}</span>
+                            <h4 className="attempt-title">{attempt.activityId || 'Kuis Formatif'}</h4>
                             <span className="attempt-time">
-                              Diselesaikan: {new Date(attempt.completedAt).toLocaleString('id-ID')}
+                              Diselesaikan: {attempt.completedAt ? new Date(attempt.completedAt).toLocaleString('id-ID') : '-'}
                             </span>
                           </div>
                           <div className="attempt-score-box">
@@ -469,7 +475,7 @@ export default function TeacherDashboard({ onNavigate }) {
                               <span className="badge badge-amber">Percobaan #{answers.trialNumber || 1}</span>
                               <h4 className="lab-obs-title">{exp?.title || obs.activityId}</h4>
                               <span className="attempt-time">
-                                Dikirim: {new Date(obs.completedAt).toLocaleString('id-ID')}
+                                Dikirim: {obs.completedAt ? new Date(obs.completedAt).toLocaleString('id-ID') : '-'}
                               </span>
                             </div>
                             <span className="badge badge-cyan">{exp?.code || 'LAB'}</span>

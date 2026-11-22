@@ -183,6 +183,7 @@
 /* 3. Tabel Siswa */
 .table-responsive-wrapper {
   overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
   background: var(--color-bg-card, #131c31);
   border: 1px solid var(--color-border-subtle, rgba(255, 255, 255, 0.08));
   border-radius: var(--radius-lg, 0.75rem);
@@ -665,5 +666,142 @@
   color: var(--color-text-secondary, #94a3b8);
   line-height: 1.6;
   margin-bottom: 1.75rem;
+}
+
+/* Responsiveness for Tablet, Mobile, and Small Screens */
+@media (max-width: 768px) {
+  .teacher-header-banner {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 1rem;
+  }
+
+  .reload-btn {
+    align-self: flex-start;
+    min-height: 44px;
+  }
+
+  .dashboard-toolbar {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0.75rem;
+  }
+
+  .search-box {
+    min-width: 0;
+    width: 100%;
+    min-height: 44px;
+  }
+
+  .filter-group {
+    width: 100%;
+    justify-content: space-between;
+  }
+
+  .filter-select {
+    flex: 1;
+    min-height: 44px;
+  }
+
+  .class-metrics-grid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 0.75rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .teacher-dashboard-container {
+    padding: 1.25rem 1rem 3.5rem;
+  }
+
+  .teacher-title {
+    font-size: 1.5rem;
+  }
+
+  .reload-btn {
+    width: 100%;
+    justify-content: center;
+  }
+
+  .class-metrics-grid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 0.65rem;
+  }
+
+  .teacher-stat-card {
+    padding: 1rem 0.85rem;
+  }
+
+  .stat-value {
+    font-size: 1.5rem;
+  }
+
+  .stat-title {
+    font-size: 0.78rem;
+  }
+
+  .teacher-data-table th,
+  .teacher-data-table td {
+    padding: 0.75rem 0.85rem;
+  }
+
+  .detail-modal-backdrop {
+    padding: 0.5rem;
+  }
+
+  .detail-modal-card {
+    max-height: 94vh;
+    border-radius: var(--radius-lg, 0.75rem);
+  }
+
+  .detail-modal-header {
+    padding: 1rem;
+  }
+
+  .detail-student-title {
+    font-size: 1.15rem;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.25rem;
+  }
+
+  .detail-modal-tabs {
+    padding: 0 0.75rem;
+    overflow-x: auto;
+  }
+
+  .detail-tab {
+    padding: 0.75rem 0.85rem;
+    font-size: 0.82rem;
+    min-height: 44px;
+  }
+
+  .detail-modal-body {
+    padding: 1rem 0.85rem;
+  }
+
+  .attempt-detail-card,
+  .lab-obs-detail-card {
+    padding: 1rem 0.75rem;
+  }
+
+  .attempt-header-row {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.5rem;
+  }
+
+  .student-choice-row,
+  .correct-answer-row {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.2rem;
+  }
+}
+
+@media (max-width: 360px) {
+  .class-metrics-grid {
+    grid-template-columns: 1fr;
+  }
 }
 

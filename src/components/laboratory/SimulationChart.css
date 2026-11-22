@@ -127,3 +127,19 @@
   background: #38bdf8;
   flex-shrink: 0;
 }
+
+@media (max-width: 480px) {
+  .simulation-chart-wrapper {
+    padding: 12px 10px;
+    gap: 10px;
+  }
+
+  .chart-legend-badge {
+    gap: 6px;
+    font-size: 0.72rem;
+  }
+
+  .legend-chip {
+    padding: 2px 6px;
+  }
+}

@@ -126,6 +126,28 @@ export default function ModulesPage({ onNavigate, isModuleCompleted, toggleModul
               </ul>
             </div>
 
+            {/* DAFTAR PUSTAKA */}
+            <div className="detail-section references-box">
+              <h3 className="references-title">DAFTAR PUSTAKA</h3>
+              <ul className="references-list">
+                <li className="reference-item">
+                  Bauer, R., Birk, J., &amp; Marks, P. S. (2019). <em>Introduction to chemistry</em> (5th ed.). McGraw-Hill Education.
+                </li>
+                <li className="reference-item">
+                  Chang, R., &amp; Goldsby, K. A. (2016). <em>Chemistry</em> (12th ed.). McGraw-Hill Education.
+                </li>
+                <li className="reference-item">
+                  Jespersen, N. D., Brady, J. E., &amp; Hyslop, A. (2011). <em>Chemistry: The molecular nature of matter</em> (6th ed.). Wiley.
+                </li>
+                <li className="reference-item">
+                  McMurry, J. E., Fay, R. C., &amp; Robinson, J. K. (2016). <em>Chemistry</em> (7th ed.). Pearson.
+                </li>
+                <li className="reference-item">
+                  Petrucci, R. H., Herring, F. G., Madura, J. D., &amp; Bissonnette, C. (2011). <em>General chemistry: Principles and modern applications</em> (10th ed.). Pearson Canada.
+                </li>
+              </ul>
+            </div>
+
             {/* Action Selesai Belajar */}
             <div className="detail-footer-actions">
               <button

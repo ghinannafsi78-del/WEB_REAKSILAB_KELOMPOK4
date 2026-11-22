@@ -275,9 +275,53 @@
   .lab-main-title {
     font-size: 1.5rem;
   }
+  .lab-exp-nav-tabs {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 8px;
+  }
+  .exp-tab-item {
+    padding: 10px 12px;
+  }
+  .exp-tab-factor {
+    font-size: 0.88rem;
+  }
+  .lab-learning-stepper {
+    gap: 4px;
+    padding: 6px 8px;
+  }
+  .step-arrow {
+    display: none;
+  }
+  .step-btn {
+    padding: 6px 8px;
+    font-size: 0.78rem;
+  }
   .stage-next-action-bar {
     flex-direction: column;
     align-items: stretch;
     text-align: center;
+  }
+  .btn-proceed-next {
+    width: 100%;
+    min-height: 44px;
+  }
+}
+
+@media (max-width: 360px) {
+  .lab-page-container {
+    padding: 16px 8px 36px 8px;
+    gap: 14px;
+  }
+  .lab-main-title {
+    font-size: 1.3rem;
+  }
+  .step-btn {
+    padding: 4px 6px;
+    font-size: 0.74rem;
+  }
+  .step-num {
+    width: 18px;
+    height: 18px;
+    font-size: 0.7rem;
   }
 }
