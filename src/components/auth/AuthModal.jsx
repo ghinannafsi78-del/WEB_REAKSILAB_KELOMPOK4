@@ -237,14 +237,24 @@ export default function AuthModal({
         console.warn('[AuthModal] Gagal memverifikasi getAccess():', accessErr);
       }
 
+      // Pastikan state sesi lokal di AuthModal langsung menggunakan sesi mutakhir
+      const latestSession = getCurrentSession();
+      setSession(latestSession);
+
       if (!access || (!access.teacher && !access.member)) {
-        setSuccessMessage(
-          'Autentikasi Google berhasil. Namun akun belum terdaftar di anggota kelas (members); akses cloud kelas belum diaktifkan.'
-        );
-      } else if (access.teacher) {
+        if (access?.role === 'pending_registration' || latestSession.role === 'pending_registration') {
+          setSuccessMessage('Autentikasi Google berhasil. Status akun Anda sedang menunggu persetujuan guru.');
+        } else if (access?.role === 'verification_failed' || latestSession.role === 'verification_failed') {
+          setErrorMessage('Autentikasi Google berhasil, tetapi verifikasi hak akses gagal: ' + (access?.error || latestSession.error || 'Akses ditolak.'));
+        } else {
+          setSuccessMessage(
+            'Autentikasi Google berhasil. Namun akun belum terdaftar di anggota kelas (members); akses cloud kelas belum diaktifkan.'
+          );
+        }
+      } else if (access.teacher || latestSession.role === 'teacher') {
         setSuccessMessage('Autentikasi Google berhasil sebagai Guru Pengampu.');
       } else {
-        const memberAlias = access.member?.alias || access.member?.name || 'Siswa';
+        const memberAlias = access.member?.alias || access.member?.name || latestSession.alias || 'Siswa';
         setSuccessMessage(`Autentikasi Google berhasil sebagai anggota kelas (${memberAlias}).`);
         checkForGuestData();
       }
@@ -523,7 +533,7 @@ export default function AuthModal({
               {/* Status Akses Kelas Sesuai Ketentuan */}
               <div
                 className={`access-status-card ${
-                  session.role === 'student'
+                  session.role === 'teacher' || session.role === 'student'
                     ? 'approved'
                     : session.role === 'pending_registration'
                     ? 'pending'
@@ -535,7 +545,9 @@ export default function AuthModal({
                 <div className="access-status-header">
                   <span className="access-status-label">Status Akses Kelas:</span>
                   <strong className="access-status-text">
-                    {session.role === 'student'
+                    {session.role === 'teacher'
+                      ? (session.accessStatus || 'Guru Pengampu (Akses Penuh)')
+                      : session.role === 'student'
                       ? `Anggota kelas: ${session.alias}`
                       : session.role === 'pending_registration'
                       ? 'Menunggu persetujuan'
@@ -545,7 +557,9 @@ export default function AuthModal({
                   </strong>
                 </div>
                 <p className="access-status-hint">
-                  {session.role === 'student'
+                  {session.role === 'teacher'
+                    ? 'Akses penuh sebagai guru pengampu kelas. Dasbor analitik dan data seluruh siswa aktif.'
+                    : session.role === 'student'
                     ? 'Hasil kuis dan lembar pengamatan lab otomatis disinkronkan ke cloud kelas.'
                     : session.role === 'verification_failed'
                     ? (session.error || 'Terjadi gangguan jaringan atau izin saat memverifikasi status keanggotaan kelas. Belajar lokal tetap berfungsi.')

@@ -320,9 +320,10 @@ async function mockResolveUserRole(user, store) {
   // 2. Siswa Dual-Read
   const rosterData = store[`roster/${uid}`];
   if (rosterData instanceof Error) {
-    if (['unavailable', 'network-request-failed', 'permission-denied'].includes(rosterData.code)) {
+    if (['unavailable', 'network-request-failed'].includes(rosterData.code)) {
       return { role: 'verification_failed', active: false, error: rosterData.message };
     }
+    // permission-denied pada roster dilanjutkan ke members
   } else if (rosterData) {
     if (rosterData.active === true) {
       return { role: 'student', alias: rosterData.alias || `Siswa-${uid}`, active: true, error: null };
@@ -400,6 +401,7 @@ runTest('Skenario 16: Role Resolver - Siswa pending dan pengguna tidak terdaftar
 });
 
 runTest('Skenario 17: Role Resolver - Penanganan galat (permission-denied & network) mengembalikan verification_failed', async () => {
+  // 5a. Gangguan jaringan pada roster -> verification_failed
   const networkUser = { uid: 'user_net_fail' };
   const netErr = new Error('Koneksi terputus');
   netErr.code = 'unavailable';
@@ -408,12 +410,45 @@ runTest('Skenario 17: Role Resolver - Penanganan galat (permission-denied & netw
   assert.strictEqual(resNet.role, 'verification_failed', 'Network error harus verification_failed, bukan unregistered');
   assert.strictEqual(resNet.active, false);
 
-  const permUser = { uid: 'user_perm_denied' };
+  // 1. Siswa dengan dokumen members/{uid} valid dapat memperoleh role student meskipun akses roster ditolak
+  const permRosterValidMember = { uid: 'student_roster_denied_member_valid' };
   const permErr = new Error('Missing or insufficient permissions');
   permErr.code = 'permission-denied';
-  const storePerm = { 'roster/user_perm_denied': permErr };
+  const storeRosterDeniedMemberValid = {
+    'roster/student_roster_denied_member_valid': permErr,
+    'members/student_roster_denied_member_valid': { alias: 'Siswa Handout Valid', active: true },
+  };
+  const resMemberValid = await mockResolveUserRole(permRosterValidMember, storeRosterDeniedMemberValid);
+  assert.strictEqual(resMemberValid.role, 'student', 'Siswa dengan members valid harus role student meskipun roster ditolak');
+  assert.strictEqual(resMemberValid.alias, 'Siswa Handout Valid');
+  assert.strictEqual(resMemberValid.active, true);
+
+  // 3. Akun yang tidak memiliki dokumen anggota tetap memperoleh unregistered jika pemeriksaan dapat dilakukan
+  const permRosterNoMember = { uid: 'user_roster_denied_no_member' };
+  const storeRosterDeniedNoMember = {
+    'roster/user_roster_denied_no_member': permErr,
+  };
+  const resNoMember = await mockResolveUserRole(permRosterNoMember, storeRosterDeniedNoMember);
+  assert.strictEqual(resNoMember.role, 'unregistered', 'Akun tanpa keanggotaan harus unregistered');
+  assert.strictEqual(resNoMember.active, false);
+
+  // 4. Jika members juga ditolak (permission-denied), hasilnya verification_failed
+  const permUser = { uid: 'user_perm_denied' };
+  const storePerm = {
+    'roster/user_perm_denied': permErr,
+    'members/user_perm_denied': permErr,
+  };
   const resPerm = await mockResolveUserRole(permUser, storePerm);
-  assert.strictEqual(resPerm.role, 'verification_failed', 'Permission denied pada keanggotaan harus verification_failed');
+  assert.strictEqual(resPerm.role, 'verification_failed', 'Permission denied pada members harus verification_failed');
+
+  // 5b. Gangguan jaringan pada members -> verification_failed
+  const netMemberUser = { uid: 'user_member_net_fail' };
+  const storeMemberNet = {
+    'roster/user_member_net_fail': permErr,
+    'members/user_member_net_fail': netErr,
+  };
+  const resMemberNet = await mockResolveUserRole(netMemberUser, storeMemberNet);
+  assert.strictEqual(resMemberNet.role, 'verification_failed', 'Network error pada members harus verification_failed');
 });
 
 runTest('Skenario 18: Prioritas Guru - UID yang sama tidak memperoleh role guru dan siswa sekaligus', async () => {

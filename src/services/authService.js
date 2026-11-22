@@ -86,7 +86,7 @@ export async function resolveUserRole(user, firestoreDb = db, getDocFn = getDoc)
     };
   }
 
-  const uid = user.uid;
+  const uid = typeof user.uid === 'string' ? user.uid.trim() : user.uid;
   let teacherConfigured = false;
 
   // ==============================================================
@@ -98,10 +98,12 @@ export async function resolveUserRole(user, firestoreDb = db, getDocFn = getDoc)
     const rolesSnap = await getDocFn(doc(firestoreDb, 'config', 'roles'));
     if (rolesSnap?.exists()) {
       const rolesData = rolesSnap.data();
-      if (rolesData?.teacherUid && typeof rolesData.teacherUid === 'string' && rolesData.teacherUid.trim().length > 0) {
+      const rawRolesTeacherUid = rolesData?.teacherUid;
+      const normalizedRolesTeacherUid = typeof rawRolesTeacherUid === 'string' ? rawRolesTeacherUid.trim() : null;
+      if (normalizedRolesTeacherUid && normalizedRolesTeacherUid.length > 0) {
         teacherConfigured = true;
       }
-      if (rolesData?.teacherUid === uid) {
+      if (normalizedRolesTeacherUid && normalizedRolesTeacherUid === uid) {
         return {
           user,
           role: 'teacher',
@@ -128,10 +130,13 @@ export async function resolveUserRole(user, firestoreDb = db, getDocFn = getDoc)
     const settingsSnap = await getDocFn(doc(firestoreDb, 'settings', 'classroom'));
     if (settingsSnap?.exists()) {
       const settingsData = settingsSnap.data();
-      if (settingsData?.teacherUid && typeof settingsData.teacherUid === 'string' && settingsData.teacherUid.trim().length > 0) {
+      const rawTeacherUid = settingsData?.teacherUid;
+      const normalizedTeacherUid = typeof rawTeacherUid === 'string' ? rawTeacherUid.trim() : null;
+
+      if (normalizedTeacherUid && normalizedTeacherUid.length > 0) {
         teacherConfigured = true;
       }
-      if (settingsData?.teacherUid === uid) {
+      if (normalizedTeacherUid && normalizedTeacherUid === uid) {
         return {
           user,
           role: 'teacher',
@@ -147,9 +152,29 @@ export async function resolveUserRole(user, firestoreDb = db, getDocFn = getDoc)
       }
     }
   } catch (settingsErr) {
-    if (settingsErr.code !== 'permission-denied') {
-      console.warn('[authService] Gagal memeriksa settings/classroom:', settingsErr);
+    if (
+      settingsErr.code === 'permission-denied' ||
+      settingsErr.code === 'unavailable' ||
+      settingsErr.code === 'deadline-exceeded' ||
+      settingsErr.message?.includes('network')
+    ) {
+      console.warn('[authService] Gagal memeriksa settings/classroom karena izin atau jaringan:', settingsErr);
+      return {
+        user,
+        role: 'verification_failed',
+        alias: user.displayName || user.email?.split('@')[0] || null,
+        active: false,
+        accessStatus: 'Verifikasi hak akses gagal',
+        registration: null,
+        memberData: null,
+        needsRegistrationDoc: false,
+        teacherConfigured: false,
+        error: settingsErr.code === 'permission-denied'
+          ? 'Akses ditolak saat memverifikasi konfigurasi kelas (settings/classroom).'
+          : 'Gangguan koneksi saat memverifikasi konfigurasi kelas.',
+      };
     }
+    console.warn('[authService] Gagal memeriksa settings/classroom:', settingsErr);
   }
 
   // ==============================================================
@@ -185,8 +210,7 @@ export async function resolveUserRole(user, firestoreDb = db, getDocFn = getDoc)
   } catch (rosterErr) {
     if (
       rosterErr.code === 'unavailable' ||
-      rosterErr.code === 'network-request-failed' ||
-      rosterErr.code === 'permission-denied'
+      rosterErr.code === 'network-request-failed'
     ) {
       return {
         user,
@@ -198,12 +222,14 @@ export async function resolveUserRole(user, firestoreDb = db, getDocFn = getDoc)
         memberData: null,
         needsRegistrationDoc: false,
         teacherConfigured,
-        error: rosterErr.code === 'permission-denied'
-          ? 'Akses ditolak saat memverifikasi status keanggotaan kelas.'
-          : 'Gagal menghubungi server database: ' + (rosterErr.message || 'Koneksi bermasalah'),
+        error: 'Gagal menghubungi server database: ' + (rosterErr.message || 'Koneksi bermasalah'),
       };
     }
-    console.warn('[authService] Gagal membaca roster:', rosterErr);
+    // Jika error permission-denied (misal aturan keamanan hanya mengizinkan members),
+    // jangan langsung gagalkan; catat dan lanjutkan ke pemeriksaan members/{uid}.
+    if (rosterErr.code !== 'permission-denied') {
+      console.warn('[authService] Gagal membaca roster:', rosterErr);
+    }
   }
 
   // 2.b. Struktur handout: members/{uid}
@@ -324,31 +350,51 @@ export async function resolveUserRole(user, firestoreDb = db, getDocFn = getDoc)
   };
 }
 
+let inFlightVerification = null;
+
 /**
- * Memverifikasi peran pengguna dan memperbarui sesi aplikasi serta memberitahu seluruh subscriber
+ * Memverifikasi peran pengguna dan memperbarui sesi aplikasi serta memberitahu seluruh subscriber.
+ * Menggunakan deduplikasi in-flight promise untuk mencegah race condition saat onAuthStateChanged
+ * dan pemanggilan manual (seperti getAccess) berjalan bersamaan.
  */
 export async function verifyUserRole(user) {
-  try {
-    currentSession = await resolveUserRole(user, db, getDoc);
-    notifyListeners();
-    return currentSession;
-  } catch (err) {
-    console.error('[authService] Gagal memverifikasi peran user di Firestore:', err);
-    currentSession = {
-      user,
-      role: 'verification_failed',
-      alias: user?.displayName || user?.email?.split('@')[0] || null,
-      active: false,
-      accessStatus: 'Verifikasi hak akses gagal',
-      registration: null,
-      memberData: null,
-      needsRegistrationDoc: false,
-      teacherConfigured: false,
-      error: 'Gagal menghubungi server verifikasi peran: ' + (err.message || 'Koneksi bermasalah'),
-    };
-    notifyListeners();
-    return currentSession;
+  const uid = user?.uid;
+  if (inFlightVerification && inFlightVerification.uid === uid) {
+    return inFlightVerification.promise;
   }
+
+  const promise = (async () => {
+    try {
+      currentSession = await resolveUserRole(user, db, getDoc);
+      notifyListeners();
+      return currentSession;
+    } catch (err) {
+      console.error('[authService] Gagal memverifikasi peran user di Firestore:', err);
+      currentSession = {
+        user,
+        role: 'verification_failed',
+        alias: user?.displayName || user?.email?.split('@')[0] || null,
+        active: false,
+        accessStatus: 'Verifikasi hak akses gagal',
+        registration: null,
+        memberData: null,
+        needsRegistrationDoc: false,
+        teacherConfigured: false,
+        error: 'Gagal menghubungi server verifikasi peran: ' + (err.message || 'Koneksi bermasalah'),
+      };
+      notifyListeners();
+      return currentSession;
+    } finally {
+      if (inFlightVerification?.promise === promise) {
+        inFlightVerification = null;
+      }
+    }
+  })();
+
+  if (uid) {
+    inFlightVerification = { uid, promise };
+  }
+  return promise;
 }
 
 /**
@@ -628,6 +674,7 @@ export async function requestPasswordReset(email) {
  * Logout pengguna aktif
  */
 export async function logoutUser() {
+  inFlightVerification = null;
   if (!auth) {
     currentSession = {
       user: null,
