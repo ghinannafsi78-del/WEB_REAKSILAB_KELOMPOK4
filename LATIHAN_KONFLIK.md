@@ -1,1 +1,1 @@
-Kuis mempunyai pembahasan.
+Kuis mempunyai pembahasan dengan konsep dan contoh soal.
