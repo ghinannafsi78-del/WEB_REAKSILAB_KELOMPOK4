@@ -391,12 +391,19 @@ export default function TeacherDashboard({ onNavigate }) {
                               const studentAnswerVal = attempt.answers?.[q.id];
                               const isAnswered = studentAnswerVal !== undefined && studentAnswerVal !== null && studentAnswerVal !== '';
                               const studentAnswerNum = Number(studentAnswerVal);
+                              const studentAnswerIndex = isAnswered
+                                ? (!isNaN(studentAnswerNum) && studentAnswerNum >= 0 && studentAnswerNum < q.options.length
+                                    ? studentAnswerNum
+                                    : q.options.indexOf(studentAnswerVal))
+                                : -1;
                               const isCorrect = isAnswered && (
-                                (!isNaN(studentAnswerNum) && studentAnswerNum === q.correctAnswer) ||
+                                (studentAnswerIndex >= 0 && studentAnswerIndex === q.correctAnswer) ||
                                 studentAnswerVal === q.options[q.correctAnswer]
                               );
                               const selectedText = isAnswered
-                                ? (!isNaN(studentAnswerNum) && q.options[studentAnswerNum] ? q.options[studentAnswerNum] : studentAnswerVal)
+                                ? (studentAnswerIndex >= 0 && q.options[studentAnswerIndex]
+                                    ? q.options[studentAnswerIndex]
+                                    : studentAnswerVal)
                                 : 'Tidak dijawab';
 
                               return (
@@ -416,7 +423,7 @@ export default function TeacherDashboard({ onNavigate }) {
                                   <div className="student-choice-row">
                                     <span className="choice-lbl">Jawaban Siswa:</span>
                                     <span className="choice-val">
-                                      {isAnswered && (
+                                      {isAnswered && studentAnswerIndex >= 0 && (
                                         <strong>[{String.fromCharCode(65 + studentAnswerIndex)}] </strong>
                                       )}
                                       {selectedText}
