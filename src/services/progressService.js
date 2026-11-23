@@ -102,11 +102,14 @@ export function markObservationCompleted(experimentId) {
  */
 export function addQuizAttempt(attemptData) {
   const current = getStoredProgress();
+  const totalQuestions = Number(attemptData.totalQuestions) > 0
+    ? Number(attemptData.totalQuestions)
+    : 4;
   const newAttempt = {
     id: `quiz-attempt-${Date.now()}`,
     category: attemptData.category || 'Umum',
     score: Number(attemptData.score) || 0,
-    totalQuestions: Number(attemptData.totalQuestions) || 5,
+    totalQuestions,
     correctAnswers: Number(attemptData.correctAnswers) || 0,
     completedAt: new Date().toISOString()
   };

@@ -13,6 +13,7 @@ import { isConfigured } from './cloudClient.js';
 import { getCurrentSession } from './authService.js';
 import { getStoredProgress } from './progressService.js';
 import { getStoredObservations } from './observationService.js';
+import { calculateQuizScore, getQuizQuestionsForAttempt } from './quizScoringService.js';
 
 const QUEUE_KEY_PREFIX = 'reaksi-lab-queue:u:';
 const ACCOUNT_PROGRESS_PREFIX = 'reaksi-lab-progress:u:';
@@ -267,12 +268,18 @@ function updateLocalAccountProgress(uid, syncedItem) {
   if (['quiz', 'practice', 'diagnostic', 'pretest', 'posttest'].includes(syncedItem.kind)) {
     const exists = current.quizAttempts.some((q) => q.id === syncedItem.id);
     if (!exists) {
+      const questions = getQuizQuestionsForAttempt(syncedItem);
+      const scoring = calculateQuizScore(questions, syncedItem.answers);
+      const score = Number.isFinite(Number(syncedItem.score)) ? Number(syncedItem.score) : scoring.score;
+      const totalQuestions = scoring.totalQuestions > 0 ? scoring.totalQuestions : (Number(syncedItem.totalQuestions) || 4);
+      const correctAnswers = scoring.totalCorrect;
+
       current.quizAttempts.unshift({
         id: syncedItem.id,
         category: syncedItem.activityId,
-        score: syncedItem.score,
-        totalQuestions: Object.keys(syncedItem.answers || {}).length,
-        correctAnswers: syncedItem.score >= 50 ? Object.keys(syncedItem.answers || {}).length : 0,
+        score,
+        totalQuestions,
+        correctAnswers,
         completedAt: syncedItem.completedAt,
       });
     }

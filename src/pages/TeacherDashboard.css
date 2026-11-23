@@ -799,6 +799,299 @@
   }
 }
 
+/* Notifikasi Operasi Guru */
+.dashboard-alert {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.85rem 1.25rem;
+  border-radius: var(--radius-md, 0.5rem);
+  margin-bottom: 1.5rem;
+  font-size: 0.92rem;
+  line-height: 1.4;
+  animation: fadeIn 0.25s ease-out;
+}
+
+.dashboard-alert-success {
+  background: rgba(16, 185, 129, 0.12);
+  border: 1px solid rgba(16, 185, 129, 0.3);
+  color: #34d399;
+}
+
+.dashboard-alert-error {
+  background: rgba(239, 68, 68, 0.12);
+  border: 1px solid rgba(239, 68, 68, 0.3);
+  color: #f87171;
+}
+
+.alert-close-btn {
+  background: transparent;
+  border: none;
+  font-size: 1.25rem;
+  cursor: pointer;
+  color: inherit;
+  padding: 0 0.5rem;
+  line-height: 1;
+  opacity: 0.75;
+  transition: opacity 0.2s;
+}
+
+.alert-close-btn:hover {
+  opacity: 1;
+}
+
+/* Aksi Baris Siswa & Tombol Hapus */
+.student-actions-group {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.btn-delete-student {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(239, 68, 68, 0.1);
+  border: 1px solid rgba(239, 68, 68, 0.25);
+  color: #f87171;
+  border-radius: var(--radius-sm, 0.375rem);
+  padding: 0.45rem 0.6rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  min-height: 34px;
+  min-width: 34px;
+}
+
+.btn-delete-student:hover {
+  background: rgba(239, 68, 68, 0.22);
+  border-color: rgba(239, 68, 68, 0.55);
+  color: #ffffff;
+  transform: translateY(-1px);
+}
+
+.trash-svg {
+  width: 16px;
+  height: 16px;
+  stroke: currentColor;
+  stroke-width: 2;
+  fill: none;
+}
+
+.badge-danger {
+  background: rgba(239, 68, 68, 0.18);
+  color: #f87171;
+  border: 1px solid rgba(239, 68, 68, 0.35);
+  padding: 0.2rem 0.55rem;
+  border-radius: 9999px;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  display: inline-block;
+  margin-bottom: 0.35rem;
+}
+
+/* Modal Konfirmasi Hapus Data Siswa */
+.delete-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(5, 10, 20, 0.85);
+  backdrop-filter: blur(4px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  padding: 1rem;
+}
+
+.delete-modal-card {
+  background: var(--color-bg-card, #131c31);
+  border: 1px solid rgba(239, 68, 68, 0.4);
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.6), 0 0 20px rgba(239, 68, 68, 0.1);
+  border-radius: var(--radius-xl, 1rem);
+  width: 100%;
+  max-width: 520px;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  animation: modalScaleIn 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.delete-modal-header {
+  padding: 1.25rem 1.5rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+}
+
+.delete-modal-header-text {
+  display: flex;
+  flex-direction: column;
+}
+
+.delete-modal-title {
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: #ffffff;
+  margin: 0;
+}
+
+.delete-modal-body {
+  padding: 1.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  max-height: 70vh;
+  overflow-y: auto;
+}
+
+.delete-warning-lead {
+  font-size: 0.92rem;
+  color: var(--color-text-secondary, #94a3b8);
+  margin: 0;
+  line-height: 1.5;
+}
+
+.delete-student-info-box {
+  background: rgba(15, 23, 42, 0.65);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: var(--radius-md, 0.5rem);
+  padding: 0.85rem 1rem;
+}
+
+.delete-highlight-name {
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: #ffffff;
+}
+
+.delete-uid-tag {
+  font-size: 0.78rem;
+  font-family: monospace;
+  color: var(--color-text-muted, #64748b);
+  margin-top: 0.2rem;
+  word-break: break-all;
+}
+
+.delete-scope-box {
+  background: rgba(239, 68, 68, 0.05);
+  border: 1px solid rgba(239, 68, 68, 0.18);
+  border-radius: var(--radius-md, 0.5rem);
+  padding: 0.85rem 1rem;
+}
+
+.delete-scope-title {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: #fca5a5;
+  margin: 0 0 0.45rem 0;
+}
+
+.delete-scope-list {
+  margin: 0;
+  padding-left: 1.25rem;
+  font-size: 0.82rem;
+  color: #e2e8f0;
+  line-height: 1.55;
+}
+
+.delete-danger-alert {
+  display: flex;
+  gap: 0.65rem;
+  align-items: flex-start;
+  background: rgba(239, 68, 68, 0.1);
+  border-left: 4px solid #ef4444;
+  padding: 0.75rem 0.9rem;
+  border-radius: 0 var(--radius-sm, 0.375rem) var(--radius-sm, 0.375rem) 0;
+  font-size: 0.82rem;
+  color: #fca5a5;
+  line-height: 1.5;
+}
+
+.danger-icon {
+  font-size: 1.15rem;
+  flex-shrink: 0;
+  line-height: 1;
+}
+
+.delete-modal-error-alert {
+  display: flex;
+  gap: 0.65rem;
+  align-items: flex-start;
+  background: rgba(239, 68, 68, 0.18);
+  border: 1px solid rgba(239, 68, 68, 0.45);
+  padding: 0.75rem 0.9rem;
+  border-radius: var(--radius-sm, 0.375rem);
+  font-size: 0.85rem;
+  color: #fca5a5;
+  line-height: 1.45;
+  animation: fadeIn 0.2s ease-out;
+}
+
+.delete-modal-footer {
+  padding: 1.1rem 1.5rem;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.75rem;
+  background: rgba(10, 15, 29, 0.4);
+}
+
+.btn-danger-action {
+  background: #dc2626;
+  color: #ffffff;
+  border: 1px solid #ef4444;
+  border-radius: var(--radius-md, 0.5rem);
+  padding: 0.55rem 1.25rem;
+  font-weight: 600;
+  font-size: 0.9rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.btn-danger-action:hover:not(:disabled) {
+  background: #b91c1c;
+  border-color: #dc2626;
+  transform: translateY(-1px);
+}
+
+.btn-danger-action:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+@media (max-width: 600px) {
+  .student-actions-group {
+    flex-direction: column;
+    align-items: stretch;
+    width: 100%;
+    gap: 0.35rem;
+  }
+
+  .btn-delete-student {
+    justify-content: center;
+    width: 100%;
+    padding: 0.4rem;
+  }
+
+  .delete-modal-card {
+    max-height: 94vh;
+  }
+
+  .delete-modal-footer {
+    flex-direction: column-reverse;
+  }
+
+  .delete-modal-footer .btn,
+  .delete-modal-footer .btn-danger-action {
+    width: 100%;
+    justify-content: center;
+  }
+}
+
 @media (max-width: 360px) {
   .class-metrics-grid {
     grid-template-columns: 1fr;

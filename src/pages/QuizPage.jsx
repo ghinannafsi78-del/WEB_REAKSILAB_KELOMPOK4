@@ -3,6 +3,7 @@ import { useState, useEffect } from 'react';
 import { addQuizAttempt } from '../services/progressService.js';
 import { enqueueResult } from '../services/syncService.js';
 import { getCurrentSession, subscribeAuthState } from '../services/authService.js';
+import { calculateQuizScore } from '../services/quizScoringService.js';
 import './QuizPage.css';
 
 export const QUESTION_BANK_VERSION = 'qb-2026-11-03';
@@ -59,6 +60,20 @@ export const QUIZ_QUESTIONS = [
     explanation:
       'v ~ [A]ᵐ => 9 = (3)ᵐ => 3² = 3ᵐ => m = 2. Jadi orde reaksi terhadap A adalah 2 (kuadrat).',
   },
+  {
+    id: 'q5',
+    category: 'Luas Permukaan Sentuh',
+    question: 'Mengapa zat padat yang berbentuk serbuk halus bereaksi jauh lebih cepat dibandingkan zat padat berupa bongkahan besar dengan massa yang sama?',
+    options: [
+      'Serbuk memiliki nilai energi aktivasi yang jauh lebih rendah daripada bongkahan',
+      'Bentuk serbuk memperluas total area bidang sentuh antarpartikel sehingga frekuensi tumbukan efektif meningkat',
+      'Massa total zat bertambah secara spontan ketika digerus menjadi serbuk',
+      'Zat berbentuk serbuk menghasilkan kenaikan suhu larutan secara otomatis',
+    ],
+    correctAnswer: 1,
+    explanation:
+      'Pada zat padat heterogen, reaksi hanya dapat terjadi pada area kontak antarpartikel (bidang sentuh). Bentuk serbuk halus memiliki total luas bidang sentuh yang jauh lebih besar daripada bongkahan dengan massa sama, sehingga frekuensi tumbukan efektif antarpartikel meningkat drastis.',
+  },
 ];
 
 export default function QuizPage({ onNavigate, onQuizCompleted }) {
@@ -68,6 +83,7 @@ export default function QuizPage({ onNavigate, onQuizCompleted }) {
   const [score, setScore] = useState(0);
   const [isFinished, setIsFinished] = useState(false);
   const [userAnswersMap, setUserAnswersMap] = useState({});
+  const [quizResult, setQuizResult] = useState(null);
   const [authSession, setAuthSession] = useState(getCurrentSession());
   const [cloudSyncStatus, setCloudSyncStatus] = useState(null);
 
@@ -114,18 +130,8 @@ export default function QuizPage({ onNavigate, onQuizCompleted }) {
     } else {
       // Kuis selesai seluruhnya
       setIsFinished(true);
-      const totalCorrect = score;
-      const finalScorePercent = Math.round((totalCorrect / QUIZ_QUESTIONS.length) * 100);
 
-      // 1. Simpan ke LocalStorage (selalu tersimpan, mode tamu maupun akun)
-      addQuizAttempt({
-        category: 'Kuis Evaluasi Formatif',
-        score: finalScorePercent,
-        totalQuestions: QUIZ_QUESTIONS.length,
-        correctAnswers: totalCorrect,
-      });
-
-      // 2. Bentuk objek jawaban per butir (semua nilai string sesuai attemptContract)
+      // 1. Bentuk objek jawaban per butir (semua nilai string sesuai attemptContract)
       const rawAnswers = {
         ...userAnswersMap,
         [currentQ.id]: selectedOpt,
@@ -133,12 +139,26 @@ export default function QuizPage({ onNavigate, onQuizCompleted }) {
       const finalAnswers = {};
       QUIZ_QUESTIONS.forEach((q) => {
         const chosen = rawAnswers[q.id];
-        if (chosen !== undefined && chosen !== null) {
+        if (chosen !== undefined && chosen !== null && chosen !== '') {
           finalAnswers[q.id] = String(chosen);
         }
       });
 
-      // 3. Simpan attempt ke sistem attempts (Mode Akun maupun Mode Tamu)
+      // 2. Hitung skor terpadu: (benar / totalSoal) * 100
+      const scoring = calculateQuizScore(QUIZ_QUESTIONS, finalAnswers);
+      const totalCorrect = scoring.totalCorrect;
+      const finalScorePercent = scoring.score;
+      setQuizResult(scoring);
+
+      // 3. Simpan ke LocalStorage (selalu tersimpan, mode tamu maupun akun)
+      addQuizAttempt({
+        category: 'Kuis Evaluasi Formatif',
+        score: finalScorePercent,
+        totalQuestions: QUIZ_QUESTIONS.length,
+        correctAnswers: totalCorrect,
+      });
+
+      // 4. Simpan attempt ke sistem attempts (Mode Akun maupun Mode Tamu)
       try {
         await enqueueResult({
           moduleId: 'laju-reaksi',
@@ -171,6 +191,7 @@ export default function QuizPage({ onNavigate, onQuizCompleted }) {
     setScore(0);
     setIsFinished(false);
     setUserAnswersMap({});
+    setQuizResult(null);
     setCloudSyncStatus(null);
   };
 
@@ -272,10 +293,10 @@ export default function QuizPage({ onNavigate, onQuizCompleted }) {
           <div className="quiz-result-card">
             <span className="badge badge-emerald">Kuis Selesai</span>
             <h2 className="result-score-heading">
-              Skor Kamu: {Math.round((score / QUIZ_QUESTIONS.length) * 100)} / 100
+              Skor Kamu: {quizResult ? quizResult.score : Math.round((score / QUIZ_QUESTIONS.length) * 100)} / 100
             </h2>
             <p className="result-breakdown">
-              Kamu menjawab dengan benar <strong>{score}</strong> dari {QUIZ_QUESTIONS.length} pertanyaan.
+              Kamu menjawab dengan benar <strong>{quizResult ? quizResult.totalCorrect : score}</strong> dari {QUIZ_QUESTIONS.length} pertanyaan.
             </p>
 
             {/* Status Penyimpanan Cloud / Lokal */}

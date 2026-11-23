@@ -4,9 +4,11 @@ import {
   getAllResultsForTeacher,
   groupResultsByStudent,
   calculateClassMetrics,
+  deleteStudentData,
 } from '../services/resultService.js';
 import { getCurrentSession, subscribeAuthState } from '../services/authService.js';
 import { QUIZ_QUESTIONS } from './QuizPage.jsx';
+import { getQuizQuestionsForAttempt, calculateQuizScore } from '../services/quizScoringService.js';
 import { EXPERIMENTS_DATA } from '../data/experiments.js';
 import './TeacherDashboard.css';
 
@@ -27,6 +29,10 @@ export default function TeacherDashboard({ onNavigate }) {
   const [searchQuery, setSearchQuery] = useState('');
   const [detailModalStudent, setDetailModalStudent] = useState(null);
   const [detailModalTab, setDetailModalTab] = useState('quiz'); // 'quiz' | 'lab'
+  const [studentToDelete, setStudentToDelete] = useState(null);
+  const [deleteError, setDeleteError] = useState(null);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [notification, setNotification] = useState(null);
 
   useEffect(() => {
     const unsub = subscribeAuthState((newSession) => {
@@ -113,6 +119,31 @@ export default function TeacherDashboard({ onNavigate }) {
     });
   }, [groupedStudents, searchQuery, activityFilter]);
 
+  const handleConfirmDelete = async () => {
+    if (!studentToDelete || !studentToDelete.uid) return;
+    setIsDeleting(true);
+    setDeleteError(null);
+    try {
+      await deleteStudentData(studentToDelete.uid);
+      setNotification({
+        type: 'success',
+        message: 'Data siswa berhasil dihapus.',
+      });
+      setStudentToDelete(null);
+      await loadData();
+    } catch (err) {
+      console.error('[TeacherDashboard] Gagal menghapus data siswa:', err);
+      const simpleError = 'Gagal menghapus data siswa.';
+      setDeleteError(simpleError);
+      setNotification({
+        type: 'error',
+        message: simpleError,
+      });
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
   // Jika bukan akun guru terverifikasi
   if (session.role !== 'teacher') {
     return (
@@ -162,6 +193,20 @@ export default function TeacherDashboard({ onNavigate }) {
           <span>⚠️ {error}</span>
           <button className="btn btn-sm btn-secondary" onClick={loadData}>
             Coba Lagi
+          </button>
+        </div>
+      )}
+
+      {/* Banner Notifikasi Sukses / Error Operasi */}
+      {notification && (
+        <div className={`dashboard-alert ${notification.type === 'error' ? 'dashboard-alert-error' : 'dashboard-alert-success'}`}>
+          <span>{notification.type === 'error' ? '⚠️ ' : '✅ '}{notification.message}</span>
+          <button
+            className="alert-close-btn"
+            onClick={() => setNotification(null)}
+            aria-label="Tutup notifikasi"
+          >
+            &times;
           </button>
         </div>
       )}
@@ -309,15 +354,43 @@ export default function TeacherDashboard({ onNavigate }) {
                       </span>
                     </td>
                     <td>
-                      <button
-                        className="btn btn-secondary btn-sm"
-                        onClick={() => {
-                          setDetailModalStudent(student);
-                          setDetailModalTab('quiz');
-                        }}
-                      >
-                        Detail Jawaban &rarr;
-                      </button>
+                      <div className="student-actions-group">
+                        <button
+                          className="btn btn-secondary btn-sm"
+                          onClick={() => {
+                            setDetailModalStudent(student);
+                            setDetailModalTab('quiz');
+                          }}
+                        >
+                          Detail Jawaban &rarr;
+                        </button>
+                        <button
+                          className="btn-delete-student"
+                          title={`Hapus Data Pembelajaran ${student.alias || 'Siswa'}`}
+                          aria-label={`Hapus data ${student.alias || 'Siswa'}`}
+                          onClick={() => {
+                            setDeleteError(null);
+                            setStudentToDelete(student);
+                          }}
+                        >
+                          <svg
+                            className="trash-svg"
+                            viewBox="0 0 24 24"
+                            width="16"
+                            height="16"
+                            stroke="currentColor"
+                            strokeWidth="2"
+                            fill="none"
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                          >
+                            <polyline points="3 6 5 6 21 6" />
+                            <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+                            <line x1="10" y1="11" x2="10" y2="17" />
+                            <line x1="14" y1="11" x2="14" y2="17" />
+                          </svg>
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 ))}
@@ -393,60 +466,54 @@ export default function TeacherDashboard({ onNavigate }) {
                         <div className="attempt-answers-breakdown">
                           <h5 className="breakdown-heading">Analisis Jawaban Siswa per Butir Soal:</h5>
                           <div className="answers-grid">
-                            {QUIZ_QUESTIONS.map((q, qIndex) => {
-                              const studentAnswerVal = attempt.answers?.[q.id];
-                              const isAnswered = studentAnswerVal !== undefined && studentAnswerVal !== null && studentAnswerVal !== '';
-                              const studentAnswerNum = Number(studentAnswerVal);
-                              const studentAnswerIndex = isAnswered
-                                ? (!isNaN(studentAnswerNum) && studentAnswerNum >= 0 && studentAnswerNum < q.options.length
-                                    ? studentAnswerNum
-                                    : q.options.indexOf(studentAnswerVal))
-                                : -1;
-                              const isCorrect = isAnswered && (
-                                (studentAnswerIndex >= 0 && studentAnswerIndex === q.correctAnswer) ||
-                                studentAnswerVal === q.options[q.correctAnswer]
-                              );
-                              const selectedText = isAnswered
-                                ? (studentAnswerIndex >= 0 && q.options[studentAnswerIndex]
-                                    ? q.options[studentAnswerIndex]
-                                    : studentAnswerVal)
-                                : 'Tidak dijawab';
+                            {(() => {
+                              const currentQuestions = getQuizQuestionsForAttempt(attempt, QUIZ_QUESTIONS);
+                              const scoring = calculateQuizScore(currentQuestions, attempt.answers);
 
-                              return (
-                                <div
-                                  key={q.id}
-                                  className={`answer-item-card ${
-                                    isAnswered ? (isCorrect ? 'correct' : 'wrong') : 'unanswered'
-                                  }`}
-                                >
-                                  <div className="answer-item-header">
-                                    <span className="question-num-tag">Soal {qIndex + 1} ({q.category})</span>
-                                    <span className={`eval-pill ${isCorrect ? 'correct' : 'wrong'}`}>
-                                      {isCorrect ? '✓ Benar' : '✗ Salah'}
-                                    </span>
-                                  </div>
-                                  <p className="question-prompt">{q.question}</p>
-                                  <div className="student-choice-row">
-                                    <span className="choice-lbl">Jawaban Siswa:</span>
-                                    <span className="choice-val">
-                                      {isAnswered && studentAnswerIndex >= 0 && (
-                                        <strong>[{String.fromCharCode(65 + studentAnswerIndex)}] </strong>
-                                      )}
-                                      {selectedText}
-                                    </span>
-                                  </div>
-                                  {!isCorrect && (
-                                    <div className="correct-answer-row">
-                                      <span className="choice-lbl text-emerald">Kunci Jawaban:</span>
-                                      <span className="choice-val text-emerald">
-                                        <strong>[{String.fromCharCode(65 + q.correctAnswer)}] </strong>
-                                        {q.options[q.correctAnswer]}
+                              return scoring.answersAnalysis.map((item) => {
+                                const q = item.question;
+                                const qIndex = item.questionIndex;
+                                const isAnswered = item.isAnswered;
+                                const isCorrect = item.isCorrect;
+                                const studentAnswerIndex = item.studentAnswerIndex;
+                                const selectedText = item.selectedText;
+
+                                return (
+                                  <div
+                                    key={q.id}
+                                    className={`answer-item-card ${
+                                      isAnswered ? (isCorrect ? 'correct' : 'wrong') : 'unanswered'
+                                    }`}
+                                  >
+                                    <div className="answer-item-header">
+                                      <span className="question-num-tag">Soal {qIndex + 1} ({q.category})</span>
+                                      <span className={`eval-pill ${isCorrect ? 'correct' : 'wrong'}`}>
+                                        {isCorrect ? '✓ Benar' : '✗ Salah'}
                                       </span>
                                     </div>
-                                  )}
-                                </div>
-                              );
-                            })}
+                                    <p className="question-prompt">{q.question}</p>
+                                    <div className="student-choice-row">
+                                      <span className="choice-lbl">Jawaban Siswa:</span>
+                                      <span className="choice-val">
+                                        {isAnswered && studentAnswerIndex >= 0 && (
+                                          <strong>[{String.fromCharCode(65 + studentAnswerIndex)}] </strong>
+                                        )}
+                                        {selectedText}
+                                      </span>
+                                    </div>
+                                    {!isCorrect && (
+                                      <div className="correct-answer-row">
+                                        <span className="choice-lbl text-emerald">Kunci Jawaban:</span>
+                                        <span className="choice-val text-emerald">
+                                          <strong>[{String.fromCharCode(65 + q.correctAnswer)}] </strong>
+                                          {q.options[q.correctAnswer]}
+                                        </span>
+                                      </div>
+                                    )}
+                                  </div>
+                                );
+                              });
+                            })()}
                           </div>
                         </div>
                       </div>
@@ -557,6 +624,91 @@ export default function TeacherDashboard({ onNavigate }) {
                   )}
                 </div>
               )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 5. MODAL KONFIRMASI HAPUS DATA SISWA */}
+      {studentToDelete && (
+        <div className="delete-modal-backdrop" role="dialog" aria-modal="true" aria-labelledby="delete-modal-title">
+          <div className="delete-modal-card">
+            <div className="delete-modal-header">
+              <div className="delete-modal-header-text">
+                <span className="badge badge-danger">KONFIRMASI PENGHAPUSAN</span>
+                <h3 id="delete-modal-title" className="delete-modal-title">
+                  Hapus Data Pembelajaran Siswa?
+                </h3>
+              </div>
+              {!isDeleting && (
+                <button
+                  className="modal-close-btn"
+                  onClick={() => {
+                    setStudentToDelete(null);
+                    setDeleteError(null);
+                  }}
+                  aria-label="Batal dan tutup"
+                >
+                  &times;
+                </button>
+              )}
+            </div>
+
+            <div className="delete-modal-body">
+              {deleteError && (
+                <div className="delete-modal-error-alert" role="alert">
+                  <span className="danger-icon">⚠️</span>
+                  <span>{deleteError}</span>
+                </div>
+              )}
+
+              <p className="delete-warning-lead">
+                Anda akan menghapus seluruh data hasil belajar dan keanggotaan untuk siswa:
+              </p>
+              <div className="delete-student-info-box">
+                <div className="delete-highlight-name">{studentToDelete.alias || 'Siswa'}</div>
+                <div className="delete-uid-tag">UID: {studentToDelete.uid || '-'}</div>
+              </div>
+
+              <div className="delete-scope-box">
+                <h4 className="delete-scope-title">Data yang akan dihapus permanen meliputi:</h4>
+                <ul className="delete-scope-list">
+                  <li>Riwayat seluruh percobaan kuis formatif (attempts)</li>
+                  <li>Riwayat seluruh laporan lembar pengamatan laboratorium virtual</li>
+                  <li>Evaluasi, progres capaian, dan antrean sinkronisasi belajar</li>
+                  <li>Catatan keanggotaan kelas (roster & members)</li>
+                </ul>
+              </div>
+
+              <div className="delete-danger-alert">
+                <span className="danger-icon">⚠️</span>
+                <span>
+                  <strong>Peringatan:</strong> Tindakan ini bersifat permanen dan tidak dapat dibatalkan.
+                  Akun Google/email siswa tidak dihapus, namun seluruh riwayat belajarnya di kelas ini akan hilang.
+                </span>
+              </div>
+            </div>
+
+            <div className="delete-modal-footer">
+              <button
+                type="button"
+                className="btn btn-secondary"
+                onClick={() => {
+                  setStudentToDelete(null);
+                  setDeleteError(null);
+                }}
+                disabled={isDeleting}
+              >
+                Batal
+              </button>
+              <button
+                type="button"
+                className="btn btn-danger-action"
+                onClick={handleConfirmDelete}
+                disabled={isDeleting}
+              >
+                {isDeleting ? 'Menghapus...' : 'Ya, Hapus Data'}
+              </button>
             </div>
           </div>
         </div>

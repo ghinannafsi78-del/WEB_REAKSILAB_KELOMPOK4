@@ -12,13 +12,18 @@ service cloud.firestore {
     }
 
     // Pengguna adalah Guru Pengampu yang terdaftar
-    // Mendukung dua sumber: config/roles.teacherUid dan settings/classroom.teacherUid
+    // Mendukung tiga sumber: custom claims (role == 'teacher'), config/roles, dan settings/classroom
     function isTeacher() {
       return signedIn() && (
-        (exists(/databases/$(db)/documents/config/roles) &&
-         request.auth.uid == get(/databases/$(db)/documents/config/roles).data.get('teacherUid', '')) ||
-        (exists(/databases/$(db)/documents/settings/classroom) &&
-         request.auth.uid == get(/databases/$(db)/documents/settings/classroom).data.get('teacherUid', ''))
+        (request.auth.token.get('role', '') == 'teacher') ||
+        (exists(/databases/$(db)/documents/config/roles) && (
+          request.auth.uid == get(/databases/$(db)/documents/config/roles).data.get('teacherUid', '') ||
+          request.auth.uid == get(/databases/$(db)/documents/config/roles).data.get('teacherId', '')
+        )) ||
+        (exists(/databases/$(db)/documents/settings/classroom) && (
+          request.auth.uid == get(/databases/$(db)/documents/settings/classroom).data.get('teacherUid', '') ||
+          request.auth.uid == get(/databases/$(db)/documents/settings/classroom).data.get('teacherId', '')
+        ))
       );
     }
 
@@ -165,17 +170,19 @@ service cloud.firestore {
     // =========================================================================
 
     // 2a. roster/{uid} (Legacy)
-    // Siswa hanya dapat membaca datanya sendiri; Guru dapat membaca seluruh data roster
+    // Siswa hanya dapat membaca datanya sendiri; Guru dapat membaca dan menghapus
     match /roster/{uid} {
       allow read: if signedIn() && (request.auth.uid == uid || isTeacher());
-      allow write: if false;
+      allow delete: if isTeacher();
+      allow create, update: if false;
     }
 
     // 2b. members/{uid} (Handout Prosedur 4-05)
-    // Siswa hanya dapat membaca datanya sendiri; Guru dapat membaca seluruh data anggota
+    // Siswa hanya dapat membaca datanya sendiri; Guru dapat membaca dan menghapus
     match /members/{uid} {
       allow read: if signedIn() && (request.auth.uid == uid || isTeacher());
-      allow write: if false;
+      allow delete: if isTeacher();
+      allow create, update: if false;
     }
 
     // =========================================================================
@@ -183,10 +190,11 @@ service cloud.firestore {
     // =========================================================================
 
     // registrations/{uid} (Legacy)
-    // Baca: Pemilik atau Guru; Buat: Skema pending valid; Update/Delete: ditolak
+    // Baca: Pemilik atau Guru; Buat: Skema pending valid; Hapus: Guru; Update/Delete default: ditolak
     match /registrations/{uid} {
       allow read: if signedIn() && (request.auth.uid == uid || isTeacher());
       allow create: if signedIn() && validRegistration(uid);
+      allow delete: if isTeacher();
       allow update, delete: if false;
     }
 
@@ -195,16 +203,17 @@ service cloud.firestore {
     // =========================================================================
 
     // 4a. results/{attemptId} (Legacy — Kuis Interaktif & Pengamatan Lab)
-    // Create-only oleh siswa aktif roster; Baca oleh guru atau pemilik; Update dan delete ditolak
+    // Create-only oleh siswa aktif roster; Baca dan hapus oleh guru; Update dan delete default ditolak
     match /results/{attemptId} {
       allow read: if isTeacher() ||
                      (isStudent() && resource.data.ownerId == request.auth.uid);
       allow create: if isStudent() && validCommon(attemptId) && validQuiz();
+      allow delete: if isTeacher();
       allow update, delete: if false;
     }
 
     // 4b. attempts/{id} (Handout Prosedur 4-05 — Hasil Belajar Kontrak Baru)
-    // Create-only oleh siswa aktif members; Baca oleh guru atau pemilik; Update dan delete ditolak
+    // Create-only oleh siswa aktif members; Baca dan hapus oleh guru; Update ditolak
     match /attempts/{id} {
       // Pembacaan dokumen tunggal (get): Guru atau Siswa Handout aktif pemilik dokumen
       // resource == null diizinkan untuk siswa handout aktif guna mendukung idempotensi saveAttempt()
@@ -218,7 +227,8 @@ service cloud.firestore {
       // Pembuatan dokumen baru: Wajib siswa handout aktif & skema tervalidasi attemptContract.js
       allow create: if isHandoutStudent() && validAttempt(id);
 
-      // Update dan delete ditolak mutlak
+      // Hapus diizinkan khusus akun Guru; Update dan delete default ditolak
+      allow delete: if isTeacher();
       allow update, delete: if false;
     }
 

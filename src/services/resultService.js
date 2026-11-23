@@ -6,9 +6,10 @@
  * dan skema results (Legacy DATABASE.md).
  */
 
-import { collection, query, where, getDocs } from 'firebase/firestore';
+import { collection, query, where, getDocs, doc, deleteDoc, writeBatch } from 'firebase/firestore';
 import { db, isConfigured } from './cloudClient.js';
 import { getCurrentSession } from './authService.js';
+import { forgetAccount } from '../lib/localStore.js';
 
 /**
  * Mengambil hasil belajar milik siswa sendiri dari Cloud Firestore (Dual-Read)
@@ -258,5 +259,175 @@ export function calculateClassMetrics(groupedStudents, allResults) {
     highestScore,
     lowestScore,
     totalLabObservations: labResults.length,
+  };
+}
+
+/**
+ * Menghapus seluruh data pembelajaran siswa berdasarkan UID secara aman
+ * Hanya dapat dijalankan oleh akun Guru yang terverifikasi (PRD §11, §16 & DATABASE.md)
+ *
+ * Cakupan data yang dihapus:
+ * 1. Seluruh dokumen hasil belajar di koleksi 'attempts' milik siswa (ownerId == uid)
+ * 2. Seluruh dokumen hasil belajar di koleksi legacy 'results' milik siswa (ownerId == uid)
+ * 3. Dokumen keanggotaan kelas 'members/{uid}'
+ * 4. Dokumen keanggotaan legacy 'roster/{uid}'
+ * 5. Dokumen registrasi mandiri 'registrations/{uid}' (jika ada)
+ * 6. Cache dan antrean lokal yang terikat dengan UID siswa di perangkat ini
+ *
+ * @param {string} studentUid - UID unik siswa yang akan dihapus
+ * @returns {Promise<Object>} Ringkasan hasil penghapusan data
+ */
+export async function deleteStudentData(studentUid) {
+  const session = getCurrentSession();
+  if (!session || session.role !== 'teacher') {
+    throw new Error('Akses ditolak: Hanya akun guru yang berhak menghapus data pembelajaran siswa.');
+  }
+
+  if (!studentUid || typeof studentUid !== 'string' || studentUid.trim().length === 0) {
+    throw new Error('UID siswa tidak valid untuk operasi penghapusan.');
+  }
+
+  const targetUid = studentUid.trim();
+
+  let attemptsDeleted = 0;
+  let legacyResultsDeleted = 0;
+  let memberDeleted = false;
+  let rosterDeleted = false;
+  let registrationDeleted = false;
+  const failureErrors = [];
+
+  // 1. Eksekusi penghapusan pada Cloud Firestore jika terkonfigurasi
+  if (isConfigured && db) {
+    // 1a. Hapus seluruh attempts milik siswa (chunk batch aman <= 400 docs per commit)
+    try {
+      const qAttempts = query(
+        collection(db, 'attempts'),
+        where('ownerId', '==', targetUid)
+      );
+      const snapAttempts = await getDocs(qAttempts);
+      if (!snapAttempts.empty) {
+        let batch = writeBatch(db);
+        let count = 0;
+        for (const docSnap of snapAttempts.docs) {
+          batch.delete(docSnap.ref);
+          attemptsDeleted++;
+          count++;
+          if (count >= 400) {
+            await batch.commit();
+            batch = writeBatch(db);
+            count = 0;
+          }
+        }
+        if (count > 0) {
+          await batch.commit();
+        }
+      }
+    } catch (err) {
+      console.warn('[resultService] Gagal menghapus dokumen attempts:', err);
+      failureErrors.push(`Riwayat kuis & lab (attempts): ${err.message || err}`);
+    }
+
+    // 1b. Hapus seluruh hasil legacy results milik siswa
+    try {
+      const qLegacy = query(
+        collection(db, 'results'),
+        where('ownerId', '==', targetUid)
+      );
+      const snapLegacy = await getDocs(qLegacy);
+      if (!snapLegacy.empty) {
+        let batch = writeBatch(db);
+        let count = 0;
+        for (const docSnap of snapLegacy.docs) {
+          batch.delete(docSnap.ref);
+          legacyResultsDeleted++;
+          count++;
+          if (count >= 400) {
+            await batch.commit();
+            batch = writeBatch(db);
+            count = 0;
+          }
+        }
+        if (count > 0) {
+          await batch.commit();
+        }
+      }
+    } catch (err) {
+      console.warn('[resultService] Gagal menghapus dokumen legacy results:', err);
+      failureErrors.push(`Hasil legacy (results): ${err.message || err}`);
+    }
+
+    // 1c. Hapus dokumen keanggotaan members/{uid}
+    try {
+      const memberRef = doc(db, 'members', targetUid);
+      await deleteDoc(memberRef);
+      memberDeleted = true;
+    } catch (err) {
+      console.warn('[resultService] Gagal menghapus dokumen members:', err);
+      failureErrors.push(`Keanggotaan kelas (members): ${err.message || err}`);
+    }
+
+    // 1d. Hapus dokumen legacy roster/{uid}
+    try {
+      const rosterRef = doc(db, 'roster', targetUid);
+      await deleteDoc(rosterRef);
+      rosterDeleted = true;
+    } catch (err) {
+      console.warn('[resultService] Gagal menghapus dokumen roster:', err);
+      failureErrors.push(`Roster kelas (roster): ${err.message || err}`);
+    }
+
+    // 1e. Hapus dokumen pendaftaran registrations/{uid} jika ada
+    try {
+      const regRef = doc(db, 'registrations', targetUid);
+      await deleteDoc(regRef);
+      registrationDeleted = true;
+    } catch (err) {
+      console.warn('[resultService] Gagal menghapus dokumen registrations:', err);
+      failureErrors.push(`Pendaftaran mandiri (registrations): ${err.message || err}`);
+    }
+  }
+
+  // 2. Bersihkan cache dan antrean sinkronisasi lokal pada perangkat ini (jika ada)
+  try {
+    forgetAccount(targetUid, true);
+  } catch {
+    // Abaikan jika tidak ada entri di localStore
+  }
+
+  try {
+    if (typeof localStorage !== 'undefined') {
+      localStorage.removeItem(`reaksi-lab-progress:u:${targetUid}`);
+      localStorage.removeItem(`reaksi-lab-queue:u:${targetUid}`);
+
+      // Hapus draft dan state kuis yang berawalan targetUid
+      const keysToRemove = [];
+      for (let i = 0; i < localStorage.length; i++) {
+        const key = localStorage.key(i);
+        if (key && (
+          key.startsWith(`reaksi-lab-draft:${targetUid}:`) ||
+          key.startsWith(`reaksi-lab-quizstate:${targetUid}:`)
+        )) {
+          keysToRemove.push(key);
+        }
+      }
+      keysToRemove.forEach((k) => localStorage.removeItem(k));
+    }
+  } catch {
+    // Abaikan error pada env non-browser
+  }
+
+  if (failureErrors.length > 0) {
+    console.error('[resultService] Detail kegagalan penghapusan data siswa di Firestore:', failureErrors);
+    throw new Error('Gagal menghapus data siswa.');
+  }
+
+  return {
+    success: true,
+    uid: targetUid,
+    attemptsDeleted,
+    legacyResultsDeleted,
+    memberDeleted,
+    rosterDeleted,
+    registrationDeleted,
   };
 }

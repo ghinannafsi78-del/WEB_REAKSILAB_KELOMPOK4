@@ -3,6 +3,7 @@ import { getQuestionsByExperiment } from '../../data/labQuizQuestions.js';
 import { addQuizAttempt } from '../../services/progressService.js';
 import { enqueueResult } from '../../services/syncService.js';
 import { getCurrentSession } from '../../services/authService.js';
+import { calculateQuizScore } from '../../services/quizScoringService.js';
 import './LaboratoryQuiz.css';
 
 /**
@@ -55,10 +56,22 @@ export default function LaboratoryQuiz({
     } else {
       // Selesai seluruh kuis eksperimen aktif
       setIsCompleted(true);
-      const totalCorrect =
-        answersHistory.filter((a) => a.isCorrect).length +
-        (selectedOpt === currentQ.correctAnswer ? 1 : 0);
-      const score = Math.round((totalCorrect / questions.length) * 100);
+
+      // Kumpulkan seluruh jawaban siswa ke dalam answersMap: { [questionId]: String(optionIndex) }
+      const finalAnswersMap = {};
+      answersHistory.forEach((a) => {
+        if (a.questionId && a.selectedOption !== undefined && a.selectedOption !== null) {
+          finalAnswersMap[a.questionId] = String(a.selectedOption);
+        }
+      });
+      if (currentQ?.id && selectedOpt !== null && finalAnswersMap[currentQ.id] === undefined) {
+        finalAnswersMap[currentQ.id] = String(selectedOpt);
+      }
+
+      // Hitung skor menggunakan formula terpadu: (benar / totalSoal) * 100
+      const scoring = calculateQuizScore(questions, finalAnswersMap);
+      const score = scoring.score;
+      const totalCorrect = scoring.totalCorrect;
 
       // Simpan riwayat kuis ke LocalStorage
       addQuizAttempt({
@@ -71,18 +84,12 @@ export default function LaboratoryQuiz({
       // Sinkronkan ke cloud jika dalam Mode Akun aktif
       const session = getCurrentSession();
       if (session.active && session.user?.uid) {
-        const answersMap = {};
-        answersHistory.forEach((a) => {
-          if (a.questionId) answersMap[a.questionId] = a.selectedIndex;
-        });
-        answersMap[currentQ.id] = selectedOpt;
-
         enqueueResult({
           moduleId: 'modul-01',
           activityId: `quiz-${experiment?.id || 'lab'}`,
           questionVersion: 'qb-2026-11-03',
           kind: 'quiz',
-          answers: answersMap,
+          answers: finalAnswersMap,
           score,
           totalQuestions: questions.length,
           correctAnswers: totalCorrect,
@@ -113,8 +120,15 @@ export default function LaboratoryQuiz({
 
   // Tampilan Hasil Akhir Kuis
   if (isCompleted) {
-    const totalCorrect = answersHistory.filter((a) => a.isCorrect).length;
-    const finalScore = Math.round((totalCorrect / questions.length) * 100);
+    const finalAnswersMap = {};
+    answersHistory.forEach((a) => {
+      if (a.questionId && a.selectedOption !== undefined && a.selectedOption !== null) {
+        finalAnswersMap[a.questionId] = String(a.selectedOption);
+      }
+    });
+    const scoring = calculateQuizScore(questions, finalAnswersMap);
+    const totalCorrect = scoring.totalCorrect;
+    const finalScore = scoring.score;
 
     return (
       <div className="lab-quiz-card quiz-results-view" aria-label="Hasil Akhir Kuis Laboratorium">

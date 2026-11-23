@@ -114,6 +114,31 @@ export const LAB_QUIZ_QUESTIONS = [
       concept: 'Variabel kontrol dijaga konstan agar perbandingan kondisi percobaan bersifat adil (fair test) dan kesimpulan yang ditarik bersifat valid.'
     }
   },
+  {
+    id: 'lab-q1-concA-5',
+    category: 'Hubungan Kuantitatif Konsentrasi & Laju',
+    relatedExperimentId: 'exp-konsentrasi',
+    difficulty: 'Sedang',
+    question: 'Berdasarkan data pengamatan simulasi, jika konsentrasi pereaksi A dinaikkan dari 0.5 M menjadi 1.0 M (2 kali lipat) pada kondisi variabel lain konstan, bagaimanakah kecenderungan frekuensi tumbukan total antarpartikel di dalam wadah?',
+    options: [
+      'Frekuensi tumbukan total meningkat sekitar 2 kali lipat secara proporsional',
+      'Frekuensi tumbukan total menurun menjadi setengahnya',
+      'Frekuensi tumbukan total tidak mengalami perubahan sama sekali',
+      'Frekuensi tumbukan langsung bernilai nol karena larutan menjadi terlalu pekat'
+    ],
+    correctAnswer: 0,
+    explanation: 'Frekuensi tumbukan berbanding lurus dengan kerapatan partikel di dalam wadah. Ketika konsentrasi A digandakan (2x) dalam volume tetap, jumlah partikel A bertambah dua kali lipat, sehingga peluang dan frekuensi tumbukan dengan partikel lain juga meningkat sekitar 2 kali lipat.',
+    correctFeedback: {
+      status: 'Benar!',
+      appreciation: 'Luar biasa! Analisis hubungan kuantitatif kamu sangat presisi.',
+      reason: 'Jumlah tumbukan berbanding lurus dengan konsentrasi zat pereaksi. Menggandakan konsentrasi A melipatgandakan kerapatan dan frekuensi tumbukannya.'
+    },
+    incorrectFeedback: {
+      status: 'Belum tepat.',
+      errorHint: 'Tinjau hubungan kesebandingan antara jumlah partikel per satuan volume dengan frekuensi tumbukan.',
+      concept: 'Frekuensi tumbukan berbanding lurus dengan konsentrasi zat pereaksi. Jika konsentrasi naik 2 kali lipat, frekuensi tumbukan juga naik sekitar 2 kali lipat.'
+    }
+  },
 
   // ==========================================
   // LAB-02: PENGARUH KONSENTRASI REAKTAN B
@@ -191,6 +216,56 @@ export const LAB_QUIZ_QUESTIONS = [
       status: 'Belum tepat.',
       errorHint: 'Perhatikan persamaan reaksi A + B → AB. 1 produk membutuhkan 1 reaktan A dan 1 reaktan B. Manakah reaktan yang habis lebih dahulu?',
       concept: 'Partikel B berjumlah lebih sedikit (8) dibanding A (15). Maka pembentukan produk dibatasi oleh partikel B, menghasilkan maksimal 8 partikel produk AB.'
+    }
+  },
+  {
+    id: 'lab-q2-concB-4',
+    category: 'Peran Variabel Bebas & Terikat',
+    relatedExperimentId: 'exp-konsentrasi-b',
+    difficulty: 'Mudah',
+    question: 'Dalam investigasi LAB-02, manakah yang bertindak berturut-turut sebagai variabel bebas (dimanipulasi) dan variabel terikat (diukur responnya)?',
+    options: [
+      'Variabel bebas: Suhu sistem; Variabel terikat: Konsentrasi reaktan B',
+      'Variabel bebas: Konsentrasi reaktan B; Variabel terikat: Frekuensi tumbukan dan laju pembentukan produk',
+      'Variabel bebas: Jumlah produk; Variabel terikat: Konsentrasi reaktan A',
+      'Variabel bebas: Volume wadah; Variabel terikat: Jenis katalis'
+    ],
+    correctAnswer: 1,
+    explanation: 'Variabel bebas adalah faktor yang sengaja diubah oleh peneliti (konsentrasi reaktan B), sedangkan variabel terikat adalah respon atau keluaran yang diukur akibat perubahan tersebut (frekuensi tumbukan partikel dan laju pembentukan produk).',
+    correctFeedback: {
+      status: 'Benar!',
+      appreciation: 'Tepat sekali! Identifikasi variabel saintifik kamu sangat kuat.',
+      reason: 'Konsentrasi B sengaja diubah-ubah nilainya (variabel bebas), dan pengaruhnya diamati pada frekuensi tumbukan serta laju produk (variabel terikat).'
+    },
+    incorrectFeedback: {
+      status: 'Belum tepat.',
+      errorHint: 'Ingat kembali: variabel bebas adalah yang diubah, variabel terikat adalah hasil yang diukur/diamati.',
+      concept: 'Pada LAB-02, peneliti memanipulasi konsentrasi B untuk melihat dampaknya terhadap frekuensi tumbukan dan laju pembentukan produk.'
+    }
+  },
+  {
+    id: 'lab-q2-concB-5',
+    category: 'Analisis Grafik & Data Laju',
+    relatedExperimentId: 'exp-konsentrasi-b',
+    difficulty: 'Sedang',
+    question: 'Jika data simulasi menunjukkan bahwa kenaikan konsentrasi B dari 0.5 M ke 1.5 M (3 kali semula) menyebabkan laju reaksi pembentukan produk AB meningkat dari 2 produk/detik menjadi 6 produk/detik, berapakah orde reaksi terhadap pereaksi B?',
+    options: [
+      'Orde 0',
+      'Orde 1',
+      'Orde 2',
+      'Orde 3'
+    ],
+    correctAnswer: 1,
+    explanation: 'v ~ [B]ⁿ => (6 / 2) = (1.5 / 0.5)ⁿ => 3 = (3)ⁿ => n = 1. Laju reaksi berbanding lurus secara linier dengan konsentrasi B, sehingga reaksinya berorde 1 terhadap B.',
+    correctFeedback: {
+      status: 'Benar!',
+      appreciation: 'Hebat! Penentuan orde reaksi dari data laju kamu sangat akurat.',
+      reason: 'Kenaikan konsentrasi B 3 kali lipat menghasilkan laju reaksi 3 kali lebih cepat (3¹ = 3), membuktikan orde reaksi terhadap B adalah 1.'
+    },
+    incorrectFeedback: {
+      status: 'Belum tepat.',
+      errorHint: 'Bandingkan rasio perubahan laju reaksi dengan rasio perubahan konsentrasi B: (v₂/v₁) = ([B₂]/[B₁])ⁿ.',
+      concept: 'Ketika konsentrasi B naik 3x dan laju reaksi juga naik tepat 3x (proporsional 1:1), maka nilai eksponen orde reaksi (n) adalah 1.'
     }
   },
 
@@ -272,6 +347,56 @@ export const LAB_QUIZ_QUESTIONS = [
       concept: 'Kenaikan 20°C berarti terjadi 2 kali penggandaan laju: 0.5 → 1.0 (pada 30°C) → 2.0 produk/detik (pada 40°C).'
     }
   },
+  {
+    id: 'lab-q3-temp-4',
+    category: 'Grafik Distribusi Maxwell-Boltzmann',
+    relatedExperimentId: 'exp-suhu',
+    difficulty: 'Sedang',
+    question: 'Berdasarkan kurva distribusi energi kinetik Maxwell-Boltzmann, apa yang terjadi pada kurva saat suhu sistem reaksi dinaikkan?',
+    options: [
+      'Puncak kurva bergeser ke kanan dan melebar, sehingga luas area partikel dengan energi ≥ Ea bertambah besar',
+      'Kurva bergeser ke kiri dan menyempit ke arah energi kinetik nol',
+      'Garis ambang batas energi aktivasi (Ea) bergeser ke kiri mendekati nol',
+      'Bentuk kurva tidak berubah karena energi partikel selalu tetap'
+    ],
+    correctAnswer: 0,
+    explanation: 'Kenaikan suhu menyebabkan energi kinetik rata-rata partikel bertambah, sehingga puncak kurva distribusi bergeser ke kanan (ke nilai energi yang lebih tinggi) dan mendatar. Akibatnya, luas area di bawah kurva di sebelah kanan garis Ea (partikel yang mampu bereaksi) bertambah secara signifikan.',
+    correctFeedback: {
+      status: 'Benar!',
+      appreciation: 'Luar biasa! Pemahaman kurva distribusi kinetik Maxwell-Boltzmann kamu sangat mendalam.',
+      reason: 'Suhu tinggi mendistribusikan lebih banyak molekul ke wilayah energi kinetik tinggi (kanan kurva), memperbanyak partikel yang melampaui Ea.'
+    },
+    incorrectFeedback: {
+      status: 'Belum tepat.',
+      errorHint: 'Tinjau kembali efek kenaikan suhu terhadap persebaran energi kinetik molekul dan nilai Ea.',
+      concept: 'Kenaikan suhu tidak mengubah posisi garis Ea, melainkan menggeser puncak distribusi energi ke kanan sehingga fraksi partikel dengan E ≥ Ea melonjak.'
+    }
+  },
+  {
+    id: 'lab-q3-temp-5',
+    category: 'Waktu Reaksi & Suhu',
+    relatedExperimentId: 'exp-suhu',
+    difficulty: 'Sedang',
+    question: 'Jika suatu reaksi kimia selesai dalam waktu 40 detik pada suhu 30°C, dan setiap kenaikan suhu 10°C laju reaksi meningkat 2 kali lipat, berapakah waktu yang diperlukan untuk menyelesaikan reaksi tersebut pada suhu 50°C?',
+    options: [
+      '20 detik',
+      '10 detik',
+      '5 detik',
+      '80 detik'
+    ],
+    correctAnswer: 1,
+    explanation: 'Kenaikan suhu dari 30°C ke 50°C adalah ΔT = 20°C (2 kali kenaikan 10°C). Laju reaksi menjadi 2^(20/10) = 4 kali lebih cepat. Karena waktu reaksi berbanding terbalik dengan laju (t₂ = t₁ / n^(ΔT/10)), maka t₂ = 40 detik / 4 = 10 detik.',
+    correctFeedback: {
+      status: 'Benar!',
+      appreciation: 'Perhitungan waktu reaksi kinetika kamu sangat tepat!',
+      reason: 'Laju reaksi meningkat 4 kali lipat pada kenaikan 20°C, sehingga waktu yang dibutuhkan untuk menyelesaikan reaksi menjadi seperempatnya (40 / 4 = 10 detik).'
+    },
+    incorrectFeedback: {
+      status: 'Belum tepat.',
+      errorHint: 'Ingat bahwa waktu reaksi berbanding terbalik dengan laju reaksi: waktu baru = waktu lama dibagi faktor kelipatan laju.',
+      concept: 'Kenaikan 20°C mempercepat laju 4x lipat (2² = 4). Maka waktu reaksi berkurang menjadi 40 detik / 4 = 10 detik.'
+    }
+  },
 
   // ==========================================
   // LAB-04: PENGARUH KATALIS REAKSI
@@ -349,6 +474,56 @@ export const LAB_QUIZ_QUESTIONS = [
       status: 'Belum tepat.',
       errorHint: 'Tumbukan total terutama ditentukan oleh konsentrasi dan suhu; katalis secara spesifik memengaruhi efektivitas dari tumbukan tersebut.',
       concept: 'Katalis membuat tumbukan yang tadinya tidak efektif menjadi efektif karena ambang energi aktivasi yang harus dilompati kini lebih rendah.'
+    }
+  },
+  {
+    id: 'lab-q4-cat-4',
+    category: 'Diagram Profil Energi Reaksi',
+    relatedExperimentId: 'exp-katalis',
+    difficulty: 'Sedang',
+    question: 'Pada diagram profil energi potensial suatu reaksi kimia, bagian manakah yang mengalami penurunan nilai ketika katalis ditambahkan ke dalam sistem?',
+    options: [
+      'Tinggi puncak keadaan transisi (energi aktivasi / Ea)',
+      'Nilai perubahan entalpi reaksi (ΔH)',
+      'Tingkat energi potensial awal zat pereaksi (reaktan)',
+      'Tingkat energi potensial akhir produk reaksi'
+    ],
+    correctAnswer: 0,
+    explanation: 'Katalis hanya menurunkan tinggi puncak rintangan keadaan transisi (energi aktivasi, Ea). Katalis TIDAK mengubah tingkat energi awal reaktan, tingkat energi akhir produk, maupun nilai perubahan entalpi reaksi (ΔH).',
+    correctFeedback: {
+      status: 'Benar!',
+      appreciation: 'Tepat sekali! Membaca diagram energi kinetika kimia adalah keterampilan penting.',
+      reason: 'Katalis menurunkan rintangan keadaan transisi (Ea) melalui rute alternatif, tanpa memengaruhi tingkat energi reaktan, produk, atau nilai ΔH.'
+    },
+    incorrectFeedback: {
+      status: 'Belum tepat.',
+      errorHint: 'Pikirkan besaran apa yang diturunkan oleh katalis pada kurva energi reaksi kimia.',
+      concept: 'Katalis hanya menurunkan puncak energi aktivasi (Ea). Entalpi (ΔH) serta energi awal dan akhir tidak diubah sama sekali oleh katalis.'
+    }
+  },
+  {
+    id: 'lab-q4-cat-5',
+    category: 'Selektivitas & Mekanisme Katalis',
+    relatedExperimentId: 'exp-katalis',
+    difficulty: 'Sedang',
+    question: 'Manakah pernyataan yang paling tepat membedakan cara kerja katalis dengan cara kerja peningkatan suhu dalam mempercepat laju reaksi?',
+    options: [
+      'Katalis dan suhu bekerja dengan mekanisme yang persis sama yaitu menaikkan energi kinetik partikel',
+      'Katalis menurunkan hambatan energi aktivasi (Ea), sedangkan peningkatan suhu memperbesar energi kinetik rata-rata partikel agar melampaui Ea',
+      'Katalis menaikkan suhu larutan secara spontan menjadi mendidih',
+      'Katalis hanya dapat bekerja jika reaksi dilakukan pada wadah hampa udara'
+    ],
+    correctAnswer: 1,
+    explanation: 'Meskipun keduanya mempercepat laju reaksi, cara kerjanya berbeda secara mendasar: katalis menurunkan nilai ambang energi aktivasi (Ea) yang harus dicapai, sedangkan suhu meningkatkan energi kinetik rata-rata partikel agar lebih banyak yang mampu melampaui ambang Ea tersebut.',
+    correctFeedback: {
+      status: 'Benar!',
+      appreciation: 'Spektakuler! Perbandingan konseptual kamu sangat komprehensif dan akurat.',
+      reason: 'Suhu bekerja dari sisi partikel (menambah energi kinetik), sedangkan katalis bekerja dari sisi rintangan reaksi (merendahkan hambatan Ea).'
+    },
+    incorrectFeedback: {
+      status: 'Belum tepat.',
+      errorHint: 'Bedakan apakah faktor tersebut memengaruhi energi kinetik partikel pereaksi atau nilai energi aktivasi reaksi.',
+      concept: 'Suhu menaikkan energi kinetik partikel untuk melompati rintangan Ea, sedangkan katalis memperendah rintangan Ea itu sendiri.'
     }
   }
 ];
